@@ -16,15 +16,62 @@ const volumeSlider = document.getElementById('volumeSlider');
 let queue = [];
 let currentIndex = -1;
 
-// Format seconds into MM:SS
 function formatTime(sec) {
-  if (isNaN(sec)) return '0:00';
+  if (isNaN(sec) || !isFinite(sec)) return '0:00';
   const minutes = Math.floor(sec / 60);
   const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
 }
 
-// Fetch tracks via backend proxy
+// Extract tracks regardless of how MusicAPI structures the response
+function normalizeTracks(data) {
+  let rawList = [];
+
+  if (Array.isArray(data)) {
+    rawList = data;
+  } else if (data && typeof data === 'object') {
+    // If grouped by provider (e.g. data.spotify, data.youtube, etc.)
+    if (Array.isArray(data.spotify)) {
+      rawList = data.spotify;
+    } else if (Array.isArray(data.tracks)) {
+      rawList = data.tracks;
+    } else if (Array.isArray(data.results)) {
+      rawList = data.results;
+    } else {
+      // Collect any nested arrays found in values
+      Object.values(data).forEach(val => {
+        if (Array.isArray(val)) rawList.push(...val);
+      });
+    }
+  }
+
+  return rawList.map(item => {
+    // Resolve track title
+    const title = item.title || item.name || 'Unknown Title';
+
+    // Resolve artist names
+    let artists = 'Unknown Artist';
+    if (Array.isArray(item.artists)) {
+      artists = item.artists.map(a => (typeof a === 'string' ? a : a.name)).join(', ');
+    } else if (Array.isArray(item.artistNames)) {
+      artists = item.artistNames.join(', ');
+    } else if (typeof item.artist === 'string') {
+      artists = item.artist;
+    }
+
+    // Resolve artwork
+    const image = item.imageUrl || 
+                  (item.album && item.album.imageUrl) || 
+                  (item.album && item.album.images && item.album.images[0] && item.album.images[0].url) || 
+                  'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600';
+
+    // Resolve audio preview stream
+    const audioUrl = item.audioUrl || item.previewUrl || item.preview_url || '';
+
+    return { title, artists, image, audioUrl };
+  });
+}
+
 async function searchTracks(query) {
   try {
     const res = await fetch('/api/search', {
@@ -32,32 +79,37 @@ async function searchTracks(query) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
+
     const data = await res.json();
-    
-    // MusicAPI returns tracks matching the search
-    if (Array.isArray(data)) {
-      queue = data;
-    } else if (data.tracks) {
-      queue = data.tracks;
-    }
-    
+    console.log('Search response data:', data);
+
+    queue = normalizeTracks(data);
     renderQueue();
   } catch (err) {
-    console.error('Search failed:', err);
+    console.error('Search request failed:', err);
   }
 }
 
-// Render tracks list in sidebar
 function renderQueue() {
   trackList.innerHTML = '';
+
+  if (queue.length === 0) {
+    const emptyLi = document.createElement('li');
+    emptyLi.style.color = '#94a3b8';
+    emptyLi.style.padding = '10px';
+    emptyLi.textContent = 'No tracks found.';
+    trackList.appendChild(emptyLi);
+    return;
+  }
+
   queue.forEach((track, index) => {
     const li = document.createElement('li');
     li.className = `track-item ${index === currentIndex ? 'active' : ''}`;
     li.innerHTML = `
-      <img src="${track.imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100'}" alt="${track.name}" />
+      <img src="${track.image}" alt="${track.title}" />
       <div class="track-details">
-        <h4>${track.name}</h4>
-        <p>${track.artistNames ? track.artistNames.join(', ') : 'Unknown Artist'}</p>
+        <h4>${track.title}</h4>
+        <p>${track.artists}</p>
       </div>
     `;
     li.addEventListener('click', () => loadTrack(index));
@@ -65,28 +117,26 @@ function renderQueue() {
   });
 }
 
-// Load and play selected track
 function loadTrack(index) {
   if (index < 0 || index >= queue.length) return;
   currentIndex = index;
   const track = queue[index];
 
-  trackTitle.textContent = track.name;
-  artistName.textContent = track.artistNames ? track.artistNames.join(', ') : 'Unknown Artist';
-  albumArt.src = track.imageUrl || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600';
+  trackTitle.textContent = track.title;
+  artistName.textContent = track.artists;
+  albumArt.src = track.image;
 
-  if (track.previewUrl) {
-    audio.src = track.previewUrl;
-    audio.play();
+  if (track.audioUrl) {
+    audio.src = track.audioUrl;
+    audio.play().catch(e => console.warn('Autoplay prevented:', e));
     playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   } else {
-    alert('No 30s audio preview stream available for this track.');
+    alert('No 30-second audio stream available for this track.');
   }
 
   renderQueue();
 }
 
-// Play / Pause toggle
 playBtn.addEventListener('click', () => {
   if (!audio.src) return;
   if (audio.paused) {
@@ -98,7 +148,6 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-// Skip buttons
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -107,7 +156,6 @@ nextBtn.addEventListener('click', () => {
   if (currentIndex < queue.length - 1) loadTrack(currentIndex + 1);
 });
 
-// Progress bar updates
 audio.addEventListener('timeupdate', () => {
   if (audio.duration) {
     const progress = (audio.currentTime / audio.duration) * 100;
@@ -123,20 +171,18 @@ progressBar.addEventListener('click', (e) => {
   audio.currentTime = (clickX / rect.width) * audio.duration;
 });
 
-// Volume control
 volumeSlider.addEventListener('input', (e) => {
   audio.volume = e.target.value;
 });
 
-// Debounced live search
 let debounceTimeout;
 searchInput.addEventListener('input', (e) => {
   clearTimeout(debounceTimeout);
   const q = e.target.value.trim();
-  if (q.length > 2) {
-    debounceTimeout = setTimeout(() => searchTracks(q), 400);
+  if (q.length > 1) {
+    debounceTimeout = setTimeout(() => searchTracks(q), 350);
   }
 });
 
-// Initial sample search
-searchTracks('Midnight');
+// Perform initial search on load
+searchTracks('Starboy');
