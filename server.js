@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Enable CORS and JSON body parsing
 app.use(cors());
 app.use(express.json());
 
@@ -30,12 +30,11 @@ app.post('/api/search', async (req, res) => {
       return res.status(500).json({ error: 'MUSICAPI_CLIENT_ID is not configured in Vercel' });
     }
 
-    // Use Basic Auth if Client Secret is available; fallback to Token Auth
+    // Basic Auth with Client ID & Client Secret
     const authHeader = clientSecret
       ? 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
       : `Token ${clientId}`;
 
-    // MusicAPI search expects nested track details or search parameters
     const response = await fetch('https://api.musicapi.com/public/search', {
       method: 'POST',
       headers: {
@@ -57,34 +56,32 @@ app.post('/api/search', async (req, res) => {
       return res.status(response.status).json(rawData);
     }
 
-    // Normalize results across different API return shapes
-    let tracks = [];
-    if (Array.isArray(rawData)) {
-      tracks = rawData;
-    } else if (Array.isArray(rawData.tracks)) {
-      tracks = rawData.tracks;
-    } else if (Array.isArray(rawData.results)) {
-      tracks = rawData.results;
-    } else if (Array.isArray(rawData.data)) {
-      tracks = rawData.data;
-    }
-
-    res.json(tracks);
+    // Send the raw data directly so the client can extract the platform-specific tracks
+    res.json(rawData);
   } catch (error) {
     console.error('API proxy error:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
-// Root path handler
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    hasClientId: !!process.env.MUSICAPI_CLIENT_ID,
+    hasClientSecret: !!process.env.MUSICAPI_CLIENT_SECRET
+  });
+});
+
+// Serve frontend root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Listen locally; Vercel handles invocation in production
+// Local dev listener
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
   });
 }
 
