@@ -23,28 +23,32 @@ function formatTime(sec) {
   return `${minutes}:${seconds}`;
 }
 
-function extractTracks(data) {
+// Normalize MusicAPI YouTube responses
+function extractYouTubeTracks(data) {
   let list = [];
 
   if (Array.isArray(data)) {
     data.forEach(item => {
-      if (item.spotify) list.push(item.spotify);
-      else if (item.youtube) list.push(item.youtube);
+      if (item.youtube) list.push(item.youtube);
       else list.push(item);
     });
   } else if (data && typeof data === 'object') {
-    if (Array.isArray(data.spotify)) list = data.spotify;
-    else if (Array.isArray(data.tracks)) list = data.tracks;
-    else if (Array.isArray(data.results)) list = data.results;
+    if (Array.isArray(data.youtube)) {
+      list = data.youtube;
+    } else if (Array.isArray(data.results)) {
+      list = data.results;
+    } else {
+      Object.values(data).forEach(val => {
+        if (Array.isArray(val)) list.push(...val);
+      });
+    }
   }
 
   return list.map(item => ({
-    title: item.title || item.name || 'Unknown Track',
-    artists: Array.isArray(item.artists)
-      ? item.artists.map(a => (typeof a === 'string' ? a : a.name)).join(', ')
-      : (item.artist || 'Unknown Artist'),
-    image: item.imageUrl || (item.album && item.album.imageUrl) || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600',
-    audioUrl: item.audioUrl || item.previewUrl || item.preview_url || ''
+    title: item.title || item.name || 'Untitled Video',
+    artist: (Array.isArray(item.artists) ? item.artists.map(a => typeof a === 'string' ? a : a.name).join(', ') : item.artist) || item.channelTitle || 'YouTube Music',
+    image: item.imageUrl || (item.thumbnails && item.thumbnails.high ? item.thumbnails.high.url : '') || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600',
+    id: item.id || item.videoId || ''
   }));
 }
 
@@ -57,12 +61,12 @@ async function searchTracks(query) {
     });
 
     const data = await res.json();
-    console.log('Search response:', data);
+    console.log('YouTube search response:', data);
 
-    queue = extractTracks(data);
+    queue = extractYouTubeTracks(data);
     renderQueue();
   } catch (err) {
-    console.error('Search failed:', err);
+    console.error('Search request failed:', err);
   }
 }
 
@@ -85,7 +89,7 @@ function renderQueue() {
       <img src="${track.image}" alt="${track.title}" />
       <div class="track-details">
         <h4>${track.title}</h4>
-        <p>${track.artists}</p>
+        <p>${track.artist}</p>
       </div>
     `;
     li.addEventListener('click', () => loadTrack(index));
@@ -99,28 +103,16 @@ function loadTrack(index) {
   const track = queue[index];
 
   trackTitle.textContent = track.title;
-  artistName.textContent = track.artists;
+  artistName.textContent = track.artist;
   albumArt.src = track.image;
-
-  if (track.audioUrl) {
-    audio.src = track.audioUrl;
-    audio.play().catch(e => console.warn('Autoplay restricted:', e));
-    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-  } else {
-    alert('Audio preview not available for this track.');
-  }
 
   renderQueue();
 }
 
 playBtn.addEventListener('click', () => {
-  if (!audio.src) return;
-  if (audio.paused) {
-    audio.play();
-    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-  } else {
-    audio.pause();
-    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+  // If track loaded, handle play state
+  if (currentIndex === -1 && queue.length > 0) {
+    loadTrack(0);
   }
 });
 
@@ -130,21 +122,6 @@ prevBtn.addEventListener('click', () => {
 
 nextBtn.addEventListener('click', () => {
   if (currentIndex < queue.length - 1) loadTrack(currentIndex + 1);
-});
-
-audio.addEventListener('timeupdate', () => {
-  if (audio.duration) {
-    const progress = (audio.currentTime / audio.duration) * 100;
-    progressFill.style.width = `${progress}%`;
-    currentTimeEl.textContent = formatTime(audio.currentTime);
-    durationEl.textContent = formatTime(audio.duration);
-  }
-});
-
-progressBar.addEventListener('click', (e) => {
-  const rect = progressBar.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  audio.currentTime = (clickX / rect.width) * audio.duration;
 });
 
 volumeSlider.addEventListener('input', (e) => {
@@ -160,4 +137,5 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-searchTracks('rahat');
+// Initial query
+searchTracks('coke studio');
