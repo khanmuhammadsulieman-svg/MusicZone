@@ -23,53 +23,29 @@ function formatTime(sec) {
   return `${minutes}:${seconds}`;
 }
 
-// Extract tracks regardless of how MusicAPI structures the response
-function normalizeTracks(data) {
-  let rawList = [];
+function extractTracks(data) {
+  let list = [];
 
   if (Array.isArray(data)) {
-    rawList = data;
+    data.forEach(item => {
+      if (item.spotify) list.push(item.spotify);
+      else if (item.youtube) list.push(item.youtube);
+      else list.push(item);
+    });
   } else if (data && typeof data === 'object') {
-    // If grouped by provider (e.g. data.spotify, data.youtube, etc.)
-    if (Array.isArray(data.spotify)) {
-      rawList = data.spotify;
-    } else if (Array.isArray(data.tracks)) {
-      rawList = data.tracks;
-    } else if (Array.isArray(data.results)) {
-      rawList = data.results;
-    } else {
-      // Collect any nested arrays found in values
-      Object.values(data).forEach(val => {
-        if (Array.isArray(val)) rawList.push(...val);
-      });
-    }
+    if (Array.isArray(data.spotify)) list = data.spotify;
+    else if (Array.isArray(data.tracks)) list = data.tracks;
+    else if (Array.isArray(data.results)) list = data.results;
   }
 
-  return rawList.map(item => {
-    // Resolve track title
-    const title = item.title || item.name || 'Unknown Title';
-
-    // Resolve artist names
-    let artists = 'Unknown Artist';
-    if (Array.isArray(item.artists)) {
-      artists = item.artists.map(a => (typeof a === 'string' ? a : a.name)).join(', ');
-    } else if (Array.isArray(item.artistNames)) {
-      artists = item.artistNames.join(', ');
-    } else if (typeof item.artist === 'string') {
-      artists = item.artist;
-    }
-
-    // Resolve artwork
-    const image = item.imageUrl || 
-                  (item.album && item.album.imageUrl) || 
-                  (item.album && item.album.images && item.album.images[0] && item.album.images[0].url) || 
-                  'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600';
-
-    // Resolve audio preview stream
-    const audioUrl = item.audioUrl || item.previewUrl || item.preview_url || '';
-
-    return { title, artists, image, audioUrl };
-  });
+  return list.map(item => ({
+    title: item.title || item.name || 'Unknown Track',
+    artists: Array.isArray(item.artists)
+      ? item.artists.map(a => (typeof a === 'string' ? a : a.name)).join(', ')
+      : (item.artist || 'Unknown Artist'),
+    image: item.imageUrl || (item.album && item.album.imageUrl) || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600',
+    audioUrl: item.audioUrl || item.previewUrl || item.preview_url || ''
+  }));
 }
 
 async function searchTracks(query) {
@@ -81,12 +57,12 @@ async function searchTracks(query) {
     });
 
     const data = await res.json();
-    console.log('Search response data:', data);
+    console.log('Search response:', data);
 
-    queue = normalizeTracks(data);
+    queue = extractTracks(data);
     renderQueue();
   } catch (err) {
-    console.error('Search request failed:', err);
+    console.error('Search failed:', err);
   }
 }
 
@@ -94,11 +70,11 @@ function renderQueue() {
   trackList.innerHTML = '';
 
   if (queue.length === 0) {
-    const emptyLi = document.createElement('li');
-    emptyLi.style.color = '#94a3b8';
-    emptyLi.style.padding = '10px';
-    emptyLi.textContent = 'No tracks found.';
-    trackList.appendChild(emptyLi);
+    const empty = document.createElement('li');
+    empty.style.color = '#94a3b8';
+    empty.style.padding = '12px';
+    empty.textContent = 'No tracks found.';
+    trackList.appendChild(empty);
     return;
   }
 
@@ -128,10 +104,10 @@ function loadTrack(index) {
 
   if (track.audioUrl) {
     audio.src = track.audioUrl;
-    audio.play().catch(e => console.warn('Autoplay prevented:', e));
+    audio.play().catch(e => console.warn('Autoplay restricted:', e));
     playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   } else {
-    alert('No 30-second audio stream available for this track.');
+    alert('Audio preview not available for this track.');
   }
 
   renderQueue();
@@ -184,5 +160,4 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Perform initial search on load
-searchTracks('Starboy');
+searchTracks('rahat');
