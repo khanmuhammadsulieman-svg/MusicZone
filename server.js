@@ -6,14 +6,11 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS and JSON body parsing
 app.use(cors());
 app.use(express.json());
-
-// Serve static frontend assets
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MusicAPI Search Proxy Endpoint
+// MusicAPI Search Proxy
 app.post('/api/search', async (req, res) => {
   try {
     const { query } = req.body;
@@ -23,48 +20,38 @@ app.post('/api/search', async (req, res) => {
     }
 
     const clientId = process.env.MUSICAPI_CLIENT_ID;
-    const clientSecret = process.env.MUSICAPI_CLIENT_SECRET;
-
     if (!clientId) {
-      console.error('Missing MUSICAPI_CLIENT_ID in environment variables');
-      return res.status(500).json({ error: 'MUSICAPI_CLIENT_ID is not configured in Vercel' });
+      return res.status(500).json({ error: 'MUSICAPI_CLIENT_ID is missing from environment variables' });
     }
 
-    // Basic Auth with Client ID & Client Secret
-    const authHeader = clientSecret
-      ? 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-      : `Token ${clientId}`;
+    // MusicAPI public search uses GET with query parameters
+    const searchUrl = new URL('https://api.musicapi.com/public/search');
+    searchUrl.searchParams.append('track', query.trim());
+    searchUrl.searchParams.append('sources', 'spotify');
 
-    const response = await fetch('https://api.musicapi.com/public/search', {
-      method: 'POST',
+    const response = await fetch(searchUrl.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: JSON.stringify({
-        track: {
-          name: query.trim()
-        },
-        sources: ['spotify']
-      })
+        'Accept': 'application/json',
+        'Authorization': `Token ${clientId}`
+      }
     });
 
-    const rawData = await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
-      console.error('MusicAPI Error Response:', rawData);
-      return res.status(response.status).json(rawData);
+      console.error('MusicAPI Error:', data);
+      return res.status(response.status).json(data);
     }
 
-    // Send the raw data directly so the client can extract the platform-specific tracks
-    res.json(rawData);
+    res.json(data);
   } catch (error) {
     console.error('API proxy error:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
-// Health check endpoint
+// Diagnostic check to verify Vercel environment variables
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -73,12 +60,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve frontend root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Local dev listener
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
