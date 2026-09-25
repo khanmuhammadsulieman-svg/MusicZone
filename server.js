@@ -6,30 +6,27 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS and body parsing
 app.use(cors());
 app.use(express.json());
-
-// Serve static assets from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MusicAPI Search Route
+// YouTube Music Search Proxy Endpoint
 app.post('/api/search', async (req, res) => {
   try {
     const { query } = req.body;
+
     if (!query || !query.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    // Direct credentials fallback to avoid environment variable lookup failures
     const clientId = process.env.MUSICAPI_CLIENT_ID || '179a2da2-8780-4249-8024-274ab29914f8';
     const clientSecret = process.env.MUSICAPI_CLIENT_SECRET || '5f1dd3e4-e052-4197-b1d7-dcdecb19e331';
 
-    // Basic Auth header matching MusicAPI specification
+    // Basic Auth header for MusicAPI
     const authHeader = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-    // Request to MusicAPI search endpoint
-    const targetUrl = `https://api.musicapi.com/public/search?track=${encodeURIComponent(query.trim())}&sources=spotify`;
+    // Query MusicAPI specifically for YouTube results
+    const targetUrl = `https://api.musicapi.com/public/search?track=${encodeURIComponent(query.trim())}&sources=youtube`;
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -39,42 +36,39 @@ app.post('/api/search', async (req, res) => {
       }
     });
 
-    const responseText = await response.text();
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      data = { raw: responseText };
-    }
+    const data = await response.json();
 
     if (!response.ok) {
+      console.error('MusicAPI YouTube Search Error:', data);
       return res.status(response.status).json(data);
     }
 
     res.json(data);
   } catch (error) {
-    console.error('Server execution error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('API proxy error:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
 
-// Health check endpoint
+// Diagnostic health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    hasClientId: !!process.env.MUSICAPI_CLIENT_ID,
+    hasClientSecret: !!process.env.MUSICAPI_CLIENT_SECRET,
+    serverTime: new Date().toISOString()
   });
 });
 
-// Send index.html for root navigation
-app.get('/', (req, res) => {
+// Serve frontend
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Run local listener only when outside Vercel
+// Start server locally; Vercel handles invocation in production
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
   });
 }
 
