@@ -99,16 +99,17 @@
     </div>
 
     <div class="player-right">
-      <!-- Mini embedded video window satisfying YouTube's minimum player display policy -->
-      <div class="mini-video-dock">
-        <div id="playerMount"></div>
-      </div>
       <i class="fa-solid fa-volume-high volume-icon"></i>
       <div class="volume-slider-wrap">
         <input type="range" id="volumeSlider" min="0" max="100" value="80" />
       </div>
     </div>
   </footer>
+
+  <!-- Off-screen YouTube engine anchor -->
+  <div class="mini-video-dock">
+    <div id="playerMount"></div>
+  </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
