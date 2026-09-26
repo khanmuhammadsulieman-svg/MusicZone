@@ -44,7 +44,7 @@ body {
   width: 90vw;
   max-width: 1050px;
   height: 680px;
-  background: rgba(18, 18, 24, 0.7);
+  background: rgba(18, 18, 24, 0.75);
   backdrop-filter: blur(24px);
   border: 1px solid var(--border);
   border-radius: 28px;
@@ -59,6 +59,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .brand {
@@ -107,6 +109,16 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  padding-right: 4px;
+}
+
+.track-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.track-list::-webkit-scrollbar-thumb {
+  background: var(--surface);
+  border-radius: 4px;
 }
 
 .empty-state {
@@ -135,6 +147,11 @@ body {
   height: 44px;
   border-radius: 8px;
   object-fit: cover;
+  flex-shrink: 0;
+}
+
+.track-details {
+  overflow: hidden;
 }
 
 .track-details h4 {
@@ -143,7 +160,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
 }
 
 .track-details p {
@@ -152,7 +168,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
 }
 
 /* Player Panel */
@@ -161,6 +176,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 40px;
+  position: relative;
+  overflow: hidden;
 }
 
 .glass-card {
@@ -172,34 +189,61 @@ body {
   text-align: center;
 }
 
+/* Constrained container so YouTube stays inside the player card */
 .album-art-wrapper {
-  width: 240px;
-  height: 240px;
+  position: relative;
+  width: 260px;
+  height: 260px;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   margin-bottom: 25px;
+  background: #000;
 }
 
-.album-art-wrapper img {
+#ytPlayerContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  z-index: 2;
+}
+
+#albumArt {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.track-info {
+  width: 100%;
 }
 
 .track-info h2 {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  max-width: 380px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 380px;
+  margin: 0 auto;
 }
 
 .track-info p {
   color: var(--text-dim);
   margin-top: 4px;
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  margin: 4px auto 0 auto;
 }
 
 .progress-section {
@@ -227,6 +271,7 @@ body {
   background: var(--accent);
   width: 0%;
   border-radius: 4px;
+  transition: width 0.1s linear;
 }
 
 .controls {
