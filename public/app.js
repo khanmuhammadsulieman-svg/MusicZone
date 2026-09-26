@@ -34,8 +34,8 @@ const featuredArtists = [
 // YouTube API Setup
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('playerMount', {
-    height: '68',
-    width: '120',
+    height: '100%',
+    width: '100%',
     playerVars: {
       autoplay: 1,
       controls: 0,
@@ -55,6 +55,7 @@ window.onYouTubeIframeAPIReady = function () {
       },
       onError: (e) => {
         console.warn('Playback error code:', e.data);
+        // Automatically skip if song has copyright playback restrictions
         if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
@@ -268,9 +269,11 @@ playBtn.addEventListener('click', () => {
   const state = ytPlayer.getPlayerState();
   if (state === YT.PlayerState.PLAYING) {
     ytPlayer.pauseVideo();
+    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
   } else {
     ytPlayer.unMute();
     ytPlayer.playVideo();
+    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   }
 });
 
