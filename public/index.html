@@ -70,9 +70,14 @@
   <!-- Bottom Player Bar -->
   <footer class="player-bar" id="playerBar">
     <div class="player-left">
-      <!-- Standard Video Player Mount that satisfies YouTube policies -->
+      <!-- Direct Iframe Stream: Guaranteed to run across all browsers -->
       <div class="player-screen-wrap">
-        <div id="playerMount"></div>
+        <iframe 
+          id="ytPlayerIframe" 
+          src="" 
+          allow="autoplay; encrypted-media" 
+          allowfullscreen>
+        </iframe>
       </div>
       <div class="current-track-info">
         <div id="currentTrackTitle" class="track-title">Select a track</div>
@@ -85,17 +90,17 @@
       <div class="player-controls">
         <button id="shuffleBtn" class="control-btn-sub" title="Shuffle"><i class="fa-solid fa-shuffle"></i></button>
         <button id="prevBtn" class="control-btn" title="Previous"><i class="fa-solid fa-backward-step"></i></button>
-        <button id="playBtn" class="control-btn-play" title="Play/Pause"><i class="fa-solid fa-play"></i></button>
+        <button id="playBtn" class="control-btn-play" title="Play/Pause"><i class="fa-solid fa-pause"></i></button>
         <button id="nextBtn" class="control-btn" title="Next"><i class="fa-solid fa-forward-step"></i></button>
         <button id="repeatBtn" class="control-btn-sub" title="Repeat"><i class="fa-solid fa-repeat"></i></button>
       </div>
 
       <div class="progress-wrap">
-        <span id="currentTime" class="time-label">0:00</span>
+        <span id="currentTime" class="time-label">Live</span>
         <div class="progress-bar-bg" id="progressBar">
-          <div class="progress-bar-fill" id="progressFill"></div>
+          <div class="progress-bar-fill" id="progressFill" style="width: 100%;"></div>
         </div>
-        <span id="duration" class="time-label">0:00</span>
+        <span id="duration" class="time-label">Stream</span>
       </div>
     </div>
 
@@ -107,7 +112,6 @@
     </div>
   </footer>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
 </html>
