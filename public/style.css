@@ -37,7 +37,7 @@ body {
   transition: height 0.25s ease;
 }
 
-/* Adjust main window when music player dock is active */
+/* Adjust main viewport when bottom player dock is active */
 body.has-active-player .app-layout {
   height: calc(100vh - 90px);
 }
@@ -105,7 +105,7 @@ body.has-active-player .app-layout {
 }
 
 .nav-item:hover, .nav-item.active {
-  color: #fff;
+  color: #ffffff;
   background-color: var(--bg-card);
 }
 
@@ -262,7 +262,7 @@ body.has-active-player .app-layout {
   font-weight: 600;
 }
 
-/* Grid & Cards */
+/* Feed Sections & Grids */
 .section-header {
   display: flex;
   align-items: center;
@@ -283,6 +283,7 @@ body.has-active-player .app-layout {
   gap: 20px;
 }
 
+/* Music Card */
 .music-card {
   background-color: var(--bg-card);
   border-radius: 8px;
@@ -372,14 +373,14 @@ body.has-active-player .app-layout {
   text-align: center;
 }
 
-/* Bottom Player Bar - Strictly Hidden Until User Plays */
+/* Bottom Player Bar - Hidden Until User Plays A Song */
 .player-bar {
   height: 90px;
   background-color: #121212;
   border-top: 1px solid var(--border-color);
   padding: 0 24px;
-  display: none; /* Initially hidden */
-  grid-template-columns: 280px 1fr 240px;
+  display: none;
+  grid-template-columns: 280px 1fr 280px;
   align-items: center;
   z-index: 1000;
   position: fixed;
@@ -405,31 +406,14 @@ body.has-active-player .player-bar {
   height: 56px;
   border-radius: 4px;
   overflow: hidden;
-  background-color: #000;
+  background-color: #000000;
   flex-shrink: 0;
-}
-
-/* YouTube Iframe stays inside audio dock */
-#ytPlayerContainer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 4px;
-  z-index: 1;
 }
 
 #currentTrackThumb {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
 }
 
 .current-track-info {
@@ -558,7 +542,23 @@ body.has-active-player .player-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 14px;
+}
+
+/* Compliant 16:9 Mini video dock for YouTube playback without autoplay restrictions */
+.mini-video-dock {
+  width: 110px;
+  height: 62px;
+  background-color: #000000;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.mini-video-dock iframe, #ytPlayerContainer {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .volume-icon {
@@ -567,7 +567,7 @@ body.has-active-player .player-bar {
 }
 
 .volume-slider-wrap {
-  width: 100px;
+  width: 80px;
   display: flex;
   align-items: center;
 }
