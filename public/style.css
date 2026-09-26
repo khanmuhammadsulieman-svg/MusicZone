@@ -544,16 +544,16 @@ body.has-active-player .player-bar {
   gap: 12px;
 }
 
-/* Audio Dock: Browser detects it as active, human eye cannot see it */
+/* Audio Dock: Clipped out of human sight but fully active in DOM */
 .mini-video-dock {
   position: fixed;
   bottom: 0;
   right: 0;
   width: 200px;
   height: 120px;
-  opacity: 0.001;
+  clip-path: inset(100%);
   pointer-events: none;
-  z-index: -9999;
+  z-index: 10;
 }
 
 .mini-video-dock iframe, #playerMount {
