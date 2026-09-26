@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>MUZiFY by sulieman khan</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
   <div class="app-layout">
-    <!-- Left Navigation Sidebar -->
+    <!-- Desktop Left Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <i class="fa-brands fa-spotify brand-icon"></i>
@@ -20,9 +20,9 @@
       </div>
 
       <nav class="nav-menu">
-        <button class="nav-item active" id="navHome"><i class="fa-solid fa-house"></i> Home</button>
-        <button class="nav-item" id="navExplore"><i class="fa-regular fa-compass"></i> Explore</button>
-        <button class="nav-item" id="navLibrary"><i class="fa-solid fa-lines-leaning"></i> Library</button>
+        <button class="nav-item active nav-home-btn"><i class="fa-solid fa-house"></i> Home</button>
+        <button class="nav-item nav-explore-btn"><i class="fa-regular fa-compass"></i> Explore</button>
+        <button class="nav-item nav-library-btn"><i class="fa-solid fa-lines-leaning"></i> Library</button>
       </nav>
 
       <div class="sidebar-divider"></div>
@@ -43,6 +43,10 @@
     <!-- Main Content Area -->
     <main class="main-content">
       <header class="topbar">
+        <div class="mobile-brand-header">
+          <i class="fa-brands fa-spotify brand-icon"></i>
+          <span class="brand-title">MUZiFY</span>
+        </div>
         <div class="search-container">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
           <input type="text" id="searchInput" placeholder="Search songs, artists, podcasts..." />
@@ -67,7 +71,7 @@
     </main>
   </div>
 
-  <!-- Bottom Mini Player Bar -->
+  <!-- Bottom Player Bar (Mini Player) -->
   <footer class="player-bar" id="playerBar">
     <div class="player-left" id="footerTrackTrigger" title="Click to open Fullscreen Player">
       <div class="player-screen-wrap">
@@ -112,7 +116,23 @@
     </div>
   </footer>
 
-  <!-- Fullscreen Spotify Modal Player -->
+  <!-- Mobile App Bottom Navigation Bar -->
+  <nav class="mobile-nav-bar" id="mobileNavBar">
+    <button class="mobile-nav-item active nav-home-btn">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-item nav-explore-btn">
+      <i class="fa-regular fa-compass"></i>
+      <span>Explore</span>
+    </button>
+    <button class="mobile-nav-item nav-library-btn">
+      <i class="fa-solid fa-lines-leaning"></i>
+      <span>Library</span>
+    </button>
+  </nav>
+
+  <!-- Fullscreen Spotify Modal Player with Up Next Queue -->
   <div class="fullscreen-player-modal" id="fullscreenModal">
     <div class="fs-backdrop-glow" id="fsBackdrop"></div>
     <div class="fs-top-bar">
@@ -121,37 +141,50 @@
       <button class="fs-menu-btn"><i class="fa-solid fa-ellipsis"></i></button>
     </div>
 
-    <div class="fs-center-content">
-      <div class="fs-art-wrapper">
-        <img id="fsTrackArt" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600" alt="Album Art" />
+    <div class="fs-scrollable-body">
+      <div class="fs-center-content">
+        <div class="fs-art-wrapper">
+          <img id="fsTrackArt" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600" alt="Album Art" />
+        </div>
+
+        <div class="fs-meta-row">
+          <div class="fs-info">
+            <h1 id="fsTrackTitle">Song Title</h1>
+            <p id="fsTrackArtist">Artist Name</p>
+          </div>
+          <button class="fs-like-btn" id="fsLikeBtn"><i class="fa-regular fa-heart"></i></button>
+        </div>
+
+        <!-- Progress Container -->
+        <div class="fs-progress-container">
+          <div class="progress-bar-bg fs-progress-bg" id="fsProgressBar">
+            <div class="progress-bar-fill" id="fsProgressFill" style="width: 0%;"></div>
+          </div>
+          <div class="fs-time-labels">
+            <span id="fsCurrentTime">0:00</span>
+            <span id="fsDuration">0:00</span>
+          </div>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="fs-controls-row">
+          <button id="fsShuffleBtn" class="control-btn-sub"><i class="fa-solid fa-shuffle"></i></button>
+          <button id="fsPrevBtn" class="control-btn fs-nav-btn"><i class="fa-solid fa-backward-step"></i></button>
+          <button id="fsPlayBtn" class="control-btn-play fs-play-main"><i class="fa-solid fa-pause"></i></button>
+          <button id="fsNextBtn" class="control-btn fs-nav-btn"><i class="fa-solid fa-forward-step"></i></button>
+          <button id="fsRepeatBtn" class="control-btn-sub"><i class="fa-solid fa-repeat"></i></button>
+        </div>
       </div>
 
-      <div class="fs-meta-row">
-        <div class="fs-info">
-          <h1 id="fsTrackTitle">Song Title</h1>
-          <p id="fsTrackArtist">Artist Name</p>
+      <!-- Suggested Next Music Section -->
+      <div class="fs-queue-section">
+        <div class="fs-queue-header">
+          <span class="fs-queue-title">Up Next (Recommended)</span>
+          <span class="fs-queue-sub" id="fsCategoryBadge">Related Songs</span>
         </div>
-        <button class="fs-like-btn" id="fsLikeBtn"><i class="fa-regular fa-heart"></i></button>
-      </div>
-
-      <!-- Fullscreen Progress Bar -->
-      <div class="fs-progress-container">
-        <div class="progress-bar-bg fs-progress-bg" id="fsProgressBar">
-          <div class="progress-bar-fill" id="fsProgressFill" style="width: 0%;"></div>
+        <div class="fs-queue-list" id="fsQueueList">
+          <div class="queue-loading">Finding matching songs...</div>
         </div>
-        <div class="fs-time-labels">
-          <span id="fsCurrentTime">0:00</span>
-          <span id="fsDuration">0:00</span>
-        </div>
-      </div>
-
-      <!-- Fullscreen Controls -->
-      <div class="fs-controls-row">
-        <button id="fsShuffleBtn" class="control-btn-sub"><i class="fa-solid fa-shuffle"></i></button>
-        <button id="fsPrevBtn" class="control-btn fs-nav-btn"><i class="fa-solid fa-backward-step"></i></button>
-        <button id="fsPlayBtn" class="control-btn-play fs-play-main"><i class="fa-solid fa-pause"></i></button>
-        <button id="fsNextBtn" class="control-btn fs-nav-btn"><i class="fa-solid fa-forward-step"></i></button>
-        <button id="fsRepeatBtn" class="control-btn-sub"><i class="fa-solid fa-repeat"></i></button>
       </div>
     </div>
   </div>
