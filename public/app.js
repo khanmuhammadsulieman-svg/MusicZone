@@ -6,9 +6,12 @@ let currentTimeSec = 0;
 let totalDurationSec = 220;
 let playbackTicker = null;
 
-// Native HTML5 audio engine driving background playback and system notification center
+// Native HTML5 audio element for OS lockscreen & notification retention
 const nativeAudio = new Audio();
 nativeAudio.preload = 'auto';
+// Silent data URI keeps background audio session active in Android & iOS
+nativeAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+nativeAudio.loop = true;
 
 // DOM Elements
 const contentFeed = document.getElementById('contentFeed');
@@ -66,7 +69,7 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// MediaSession API for Android/iOS Lockscreen & Control Center
+// MediaSession for Notification Tray Controls
 function setupMediaSession(track) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -99,7 +102,7 @@ function setupMediaSession(track) {
   }
 }
 
-// Search tracks via backend
+// Search tracks via backend proxy
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api', {
@@ -139,7 +142,7 @@ function detectLanguageAndGenre(track) {
   return { query: `${cleanArtist || track.title} songs`, label: `${cleanArtist || 'Related'} Radio` };
 }
 
-// Recommendations
+// Suggestions Sidebar / Modal
 async function fetchSmartSuggestions(track) {
   const category = detectLanguageAndGenre(track);
   if (fsCategoryBadge) fsCategoryBadge.textContent = category.label;
@@ -306,30 +309,15 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-// Auto-advance when native audio finishes
-nativeAudio.addEventListener('ended', () => {
-  if (currentIndex < currentQueue.length - 1) {
-    loadTrack(currentIndex + 1);
-  } else if (suggestedQueue.length > 0) {
-    const nextSuggested = suggestedQueue.shift();
-    currentQueue.push(nextSuggested);
-    loadTrack(currentQueue.length - 1);
-  }
-});
-
-// Real-time timeline updater
+// Timeline ticker
 function startTimeline() {
   clearInterval(playbackTicker);
+  currentTimeSec = 0;
+  totalDurationSec = 220;
 
   playbackTicker = setInterval(() => {
     if (!isPlaying) return;
-
-    if (nativeAudio.src && !nativeAudio.paused && nativeAudio.duration) {
-      currentTimeSec = Math.floor(nativeAudio.currentTime);
-      totalDurationSec = Math.floor(nativeAudio.duration);
-    } else {
-      currentTimeSec++;
-    }
+    currentTimeSec++;
 
     const pct = Math.min((currentTimeSec / totalDurationSec) * 100, 100);
 
@@ -341,7 +329,7 @@ function startTimeline() {
     if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
     if (fsDuration) fsDuration.textContent = formatTime(totalDurationSec);
 
-    if (currentTimeSec >= totalDurationSec && (!nativeAudio.src || nativeAudio.paused)) {
+    if (currentTimeSec >= totalDurationSec) {
       if (currentIndex < currentQueue.length - 1) {
         loadTrack(currentIndex + 1);
       } else if (suggestedQueue.length > 0) {
@@ -353,8 +341,8 @@ function startTimeline() {
   }, 1000);
 }
 
-// Track Loader: Plays directly through HTML5 Audio to maintain system lockscreen & background play
-async function loadTrack(index) {
+// Load Track: Plays immediately via YouTube Embedded API and activates background media controls
+function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
   const track = currentQueue[index];
@@ -368,32 +356,15 @@ async function loadTrack(index) {
   if (fsTrackArtist) fsTrackArtist.textContent = track.artist;
   if (fsTrackArt) fsTrackArt.src = track.image;
 
-  currentTimeSec = 0;
-  totalDurationSec = 220;
-
-  try {
-    const streamRes = await fetch('/api', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'stream', videoId: track.id })
-    });
-    const streamData = await streamRes.json();
-
-    if (streamData && streamData.url) {
-      nativeAudio.src = streamData.url;
-      await nativeAudio.play();
-      if (ytPlayerIframe) ytPlayerIframe.src = '';
-    } else {
-      nativeAudio.src = `https://inv.tux.pizza/latest_version?id=${track.id}&itag=140`;
-      await nativeAudio.play();
-    }
-  } catch (err) {
-    nativeAudio.src = `https://inv.tux.pizza/latest_version?id=${track.id}&itag=140`;
-    nativeAudio.play().catch(() => {});
+  // 1. Play audio in embedded YouTube player
+  if (ytPlayerIframe) {
+    ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
   }
 
-  isPlaying = true;
+  // 2. Play carrier stream so notification drawer and background audio session remain alive
+  nativeAudio.play().catch(() => {});
 
+  isPlaying = true;
   if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 
@@ -404,20 +375,18 @@ async function loadTrack(index) {
 
 // Play / Pause Toggle
 function togglePlayback() {
+  if (!ytPlayerIframe) return;
+
   if (isPlaying) {
-    if (nativeAudio.src) nativeAudio.pause();
-    if (ytPlayerIframe && ytPlayerIframe.src) {
-      ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-    }
+    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+    nativeAudio.pause();
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     isPlaying = false;
   } else {
-    if (nativeAudio.src) nativeAudio.play();
-    if (ytPlayerIframe && ytPlayerIframe.src) {
-      ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-    }
+    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    nativeAudio.play().catch(() => {});
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
@@ -469,7 +438,6 @@ if (fsNextBtn) {
   });
 }
 
-// Scrubber seeking
 function seekTimeline(e, barEl) {
   if (!barEl) return;
   const rect = barEl.getBoundingClientRect();
@@ -477,9 +445,7 @@ function seekTimeline(e, barEl) {
   const pct = Math.max(0, Math.min(1, clickX / rect.width));
   currentTimeSec = Math.floor(pct * totalDurationSec);
 
-  if (nativeAudio.src) {
-    nativeAudio.currentTime = currentTimeSec;
-  } else if (ytPlayerIframe && ytPlayerIframe.contentWindow) {
+  if (ytPlayerIframe && ytPlayerIframe.contentWindow) {
     ytPlayerIframe.contentWindow.postMessage(
       JSON.stringify({ event: 'command', func: 'seekTo', args: [currentTimeSec, true] }),
       '*'
@@ -495,13 +461,6 @@ function seekTimeline(e, barEl) {
 
 if (progressBar) progressBar.addEventListener('click', (e) => seekTimeline(e, progressBar));
 if (fsProgressBar) fsProgressBar.addEventListener('click', (e) => seekTimeline(e, fsProgressBar));
-
-if (volumeSlider) {
-  volumeSlider.addEventListener('input', (e) => {
-    const val = Number(e.target.value) / 100;
-    nativeAudio.volume = val;
-  });
-}
 
 if (footerTrigger) {
   footerTrigger.addEventListener('click', () => {
