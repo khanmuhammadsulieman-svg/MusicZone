@@ -5,15 +5,15 @@ let isPlaying = false;
 let currentTimeSec = 0;
 let totalDurationSec = 220;
 let playbackTicker = null;
-let wakeLockSentinel = null;
-let audioCtx = null;
-let oscillatorNode = null;
+
+// Native HTML5 audio element driving system control center & lockscreen notifications
+const nativeAudio = new Audio();
+nativeAudio.preload = 'auto';
 
 // DOM Elements
 const contentFeed = document.getElementById('contentFeed');
 const searchInput = document.getElementById('searchInput');
 const ytPlayerIframe = document.getElementById('ytPlayerIframe');
-const bgAudioEngine = document.getElementById('bgAudioEngine');
 const playBtn = document.getElementById('playBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -23,6 +23,7 @@ const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const currentTimeEl = document.getElementById('currentTime');
 const durationEl = document.getElementById('duration');
+const volumeSlider = document.getElementById('volumeSlider');
 const chips = document.querySelectorAll('.chip');
 const playlistButtons = document.querySelectorAll('.playlist-btn');
 const footerTrigger = document.getElementById('footerTrackTrigger');
@@ -48,7 +49,7 @@ const fsNextBtn = document.getElementById('fsNextBtn');
 const fsQueueList = document.getElementById('fsQueueList');
 const fsCategoryBadge = document.getElementById('fsCategoryBadge');
 
-// Curated Artists
+// Featured Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -65,42 +66,7 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// Keep screen / thread alive on mobile devices
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator && !wakeLockSentinel) {
-      wakeLockSentinel = await navigator.wakeLock.request('screen');
-    }
-  } catch (err) {
-    console.debug('WakeLock error:', err);
-  }
-}
-
-// Background Audio Carrier: Generates a continuous low-level frequency (0.0001 gain)
-// This registers an active hardware audio output stream with Android / iOS
-function initBackgroundAudioCarrier() {
-  try {
-    if (!audioCtx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AudioContext();
-    }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-    if (!oscillatorNode) {
-      oscillatorNode = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      gainNode.gain.value = 0.0001; // Inaudible
-      oscillatorNode.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillatorNode.start();
-    }
-  } catch (e) {
-    console.debug('WebAudio carrier init:', e);
-  }
-}
-
-// MediaSession API setup for background play and lockscreen controls
+// System Notification Bar & Lockscreen Controls Integration
 function setupMediaSession(track) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -133,18 +99,7 @@ function setupMediaSession(track) {
   }
 }
 
-// Detect when user switches tabs or locks mobile screen
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && isPlaying) {
-    // If mobile hides the page, keep the audio carrier running
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-  } else if (!document.hidden && isPlaying) {
-    requestWakeLock();
-  }
-});
-
+// Track Search
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api', {
@@ -160,7 +115,7 @@ async function fetchTracks(query) {
   }
 }
 
-// Language and Genre Detection
+// Genre / Language Classification
 function detectLanguageAndGenre(track) {
   const text = `${track.title} ${track.artist}`.toLowerCase();
 
@@ -351,25 +306,29 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-// Timeline progress
+// Real-time timeline updater
 function startTimeline() {
   clearInterval(playbackTicker);
-  currentTimeSec = 0;
-  totalDurationSec = 220;
-
-  if (durationEl) durationEl.textContent = formatTime(totalDurationSec);
-  if (fsDuration) fsDuration.textContent = formatTime(totalDurationSec);
 
   playbackTicker = setInterval(() => {
     if (!isPlaying) return;
-    currentTimeSec++;
+
+    if (nativeAudio.src && !nativeAudio.paused && nativeAudio.duration) {
+      currentTimeSec = Math.floor(nativeAudio.currentTime);
+      totalDurationSec = Math.floor(nativeAudio.duration);
+    } else {
+      currentTimeSec++;
+    }
+
     const pct = Math.min((currentTimeSec / totalDurationSec) * 100, 100);
 
     if (progressFill) progressFill.style.width = `${pct}%`;
     if (fsProgressFill) fsProgressFill.style.width = `${pct}%`;
 
     if (currentTimeEl) currentTimeEl.textContent = formatTime(currentTimeSec);
+    if (durationEl) durationEl.textContent = formatTime(totalDurationSec);
     if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
+    if (fsDuration) fsDuration.textContent = formatTime(totalDurationSec);
 
     if (currentTimeSec >= totalDurationSec) {
       if (currentIndex < currentQueue.length - 1) {
@@ -383,8 +342,8 @@ function startTimeline() {
   }, 1000);
 }
 
-// Track Loader with Background Wake-Lock & Audio Context Activation
-function loadTrack(index) {
+// Track Loader: Resolves direct audio stream for phone background play & lockscreen notification
+async function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
   const track = currentQueue[index];
@@ -398,13 +357,36 @@ function loadTrack(index) {
   if (fsTrackArtist) fsTrackArtist.textContent = track.artist;
   if (fsTrackArt) fsTrackArt.src = track.image;
 
-  // Activate WebAudio and WakeLock on user click
-  initBackgroundAudioCarrier();
-  requestWakeLock();
+  currentTimeSec = 0;
+  totalDurationSec = 220;
 
-  if (ytPlayerIframe) {
-    ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+  // Resolve audio stream from backend resolver
+  try {
+    const streamRes = await fetch('/api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'stream', videoId: track.id })
+    });
+    const streamData = await streamRes.json();
+
+    if (streamData && streamData.url) {
+      nativeAudio.src = streamData.url;
+      if (streamData.duration) totalDurationSec = streamData.duration;
+      await nativeAudio.play();
+      if (ytPlayerIframe) ytPlayerIframe.src = '';
+    } else {
+      nativeAudio.pause();
+      nativeAudio.src = '';
+      if (ytPlayerIframe) {
+        ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+      }
+    }
+  } catch (err) {
+    if (ytPlayerIframe) {
+      ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+    }
   }
+
   isPlaying = true;
 
   if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
@@ -415,19 +397,26 @@ function loadTrack(index) {
   fetchSmartSuggestions(track);
 }
 
+// Global Play / Pause Handler
 function togglePlayback() {
-  if (!ytPlayerIframe || !ytPlayerIframe.src) return;
   if (isPlaying) {
-    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+    if (nativeAudio.src) {
+      nativeAudio.pause();
+    }
+    if (ytPlayerIframe && ytPlayerIframe.src) {
+      ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+    }
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     isPlaying = false;
   } else {
-    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-    initBackgroundAudioCarrier();
-    requestWakeLock();
+    if (nativeAudio.src) {
+      nativeAudio.play();
+    }
+    if (ytPlayerIframe && ytPlayerIframe.src) {
+      ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    }
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
@@ -486,22 +475,31 @@ function seekTimeline(e, barEl) {
   const pct = Math.max(0, Math.min(1, clickX / rect.width));
   currentTimeSec = Math.floor(pct * totalDurationSec);
 
-  if (progressFill) progressFill.style.width = `${pct * 100}%`;
-  if (fsProgressFill) fsProgressFill.style.width = `${pct * 100}%`;
-
-  if (currentTimeEl) currentTimeEl.textContent = formatTime(currentTimeSec);
-  if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
-
-  if (ytPlayerIframe && ytPlayerIframe.contentWindow) {
+  if (nativeAudio.src) {
+    nativeAudio.currentTime = currentTimeSec;
+  } else if (ytPlayerIframe && ytPlayerIframe.contentWindow) {
     ytPlayerIframe.contentWindow.postMessage(
       JSON.stringify({ event: 'command', func: 'seekTo', args: [currentTimeSec, true] }),
       '*'
     );
   }
+
+  if (progressFill) progressFill.style.width = `${pct * 100}%`;
+  if (fsProgressFill) fsProgressFill.style.width = `${pct * 100}%`;
+
+  if (currentTimeEl) currentTimeEl.textContent = formatTime(currentTimeSec);
+  if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
 }
 
 if (progressBar) progressBar.addEventListener('click', (e) => seekTimeline(e, progressBar));
 if (fsProgressBar) fsProgressBar.addEventListener('click', (e) => seekTimeline(e, fsProgressBar));
+
+if (volumeSlider) {
+  volumeSlider.addEventListener('input', (e) => {
+    const val = Number(e.target.value) / 100;
+    nativeAudio.volume = val;
+  });
+}
 
 if (footerTrigger) {
   footerTrigger.addEventListener('click', () => {
@@ -517,7 +515,7 @@ if (fsCloseBtn) {
   });
 }
 
-// Synchronized Top Tab Navigation (Home, Explore, Library)
+// Synchronized Top Tab Navigation
 function activateTab(tabName) {
   document.querySelectorAll('.top-nav-btn').forEach(el => el.classList.remove('active'));
 
