@@ -44,7 +44,7 @@ const fsNextBtn = document.getElementById('fsNextBtn');
 const fsQueueList = document.getElementById('fsQueueList');
 const fsCategoryBadge = document.getElementById('fsCategoryBadge');
 
-// Featured Artists
+// Curated Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -61,7 +61,6 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// Fetch tracks from backend proxy
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api/search', {
@@ -77,7 +76,7 @@ async function fetchTracks(query) {
   }
 }
 
-// Smart Language & Category Detection
+// Smart Language & Genre Detection
 function detectLanguageAndGenre(track) {
   const text = `${track.title} ${track.artist}`.toLowerCase();
 
@@ -101,7 +100,7 @@ function detectLanguageAndGenre(track) {
   return { query: `${cleanArtist || track.title} songs`, label: `${cleanArtist || 'Related'} Radio` };
 }
 
-// Fetch & Display Recommendations
+// Recommendations
 async function fetchSmartSuggestions(track) {
   const category = detectLanguageAndGenre(track);
   fsCategoryBadge.textContent = category.label;
@@ -227,7 +226,7 @@ async function loadHomeFeed() {
   if (latest.length > 0) contentFeed.appendChild(createSection('Latest Releases', latest));
 }
 
-// Category Tabs
+// Category Tabs Handlers
 chips.forEach((chip) => {
   chip.addEventListener('click', async () => {
     chips.forEach(c => c.classList.remove('active'));
@@ -253,6 +252,7 @@ chips.forEach((chip) => {
   });
 });
 
+// Quick Playlists Click
 playlistButtons.forEach((btn) => {
   btn.addEventListener('click', async () => {
     const q = btn.getAttribute('data-query');
@@ -267,7 +267,7 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-// Real-Time Timeline Progress & Auto-Next
+// Timeline progress
 function startTimeline() {
   clearInterval(playbackTicker);
   currentTimeSec = 0;
@@ -299,7 +299,6 @@ function startTimeline() {
   }, 1000);
 }
 
-// Play Track
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -394,7 +393,6 @@ function seekTimeline(e, barEl) {
 progressBar.addEventListener('click', (e) => seekTimeline(e, progressBar));
 fsProgressBar.addEventListener('click', (e) => seekTimeline(e, fsProgressBar));
 
-// Open & Close Spotify Fullscreen Mode
 footerTrigger.addEventListener('click', () => {
   if (currentIndex >= 0) {
     fullscreenModal.classList.add('active');
@@ -405,7 +403,7 @@ fsCloseBtn.addEventListener('click', () => {
   fullscreenModal.classList.remove('active');
 });
 
-// Synchronized Tab Selection (Desktop Sidebar + Mobile Bottom Bar)
+// Tab navigation handler
 function activateTab(tabName) {
   document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(el => el.classList.remove('active'));
 
@@ -423,7 +421,7 @@ function activateTab(tabName) {
   } else if (tabName === 'library') {
     navLibraryButtons.forEach(btn => btn.classList.add('active'));
     contentFeed.innerHTML = `
-      <div style="padding: 20px;">
+      <div style="padding: 10px 0;">
         <h2 style="font-size: 1.4rem; font-weight:700; margin-bottom:16px;">Your Library</h2>
         <div class="playlist-quick-list" style="max-width:400px;">
           <button class="playlist-btn" data-query="Top Global Hits 2026" style="padding:14px; background: #181818; border-radius:8px; margin-bottom:8px;"><i class="fa-solid fa-fire" style="color:#1db954;"></i> Top Global Hits</button>
@@ -452,7 +450,6 @@ navHomeButtons.forEach(btn => btn.addEventListener('click', () => activateTab('h
 navExploreButtons.forEach(btn => btn.addEventListener('click', () => activateTab('explore')));
 navLibraryButtons.forEach(btn => btn.addEventListener('click', () => activateTab('library')));
 
-// Search Input
 let debounceTimer;
 searchInput.addEventListener('input', (e) => {
   clearTimeout(debounceTimer);
@@ -469,5 +466,4 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Initial startup
 loadHomeFeed();
