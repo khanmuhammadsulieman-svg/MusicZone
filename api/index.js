@@ -26,29 +26,78 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyDUm__fKxJRBFC5q9J1vMXqLU0J4kF7ecQ';
+    const apiKey = process.env.YOUTUBE_API_KEY;
 
-    // Direct YouTube Search
-    const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query.trim())}&key=${apiKey}`;
+    // 1. Primary Attempt: Official YouTube Data API v3
+    if (apiKey) {
+      // NOTE: Removed &videoCategoryId=10 so regional/Coke Studio/Bollywood songs appear reliably
+      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(query.trim())}&key=${apiKey}`;
 
-    const response = await fetch(ytUrl);
-    const data = await response.json();
+      try {
+        const response = await fetch(ytUrl);
+        const data = await response.json();
 
-    if (!response.ok) {
-      console.error('YouTube Data API Error:', data);
-      return res.status(response.status).json(data);
+        if (response.ok && Array.isArray(data.items) && data.items.length > 0) {
+          const tracks = data.items
+            .filter((item) => item.id && item.id.videoId)
+            .map((item) => ({
+              id: item.id.videoId,
+              title: item.snippet.title,
+              artist: item.snippet.channelTitle,
+              image:
+                (item.snippet.thumbnails.high && item.snippet.thumbnails.high.url) ||
+                (item.snippet.thumbnails.medium && item.snippet.thumbnails.medium.url) ||
+                item.snippet.thumbnails.default.url
+            }));
+
+          return res.status(200).json(tracks);
+        } else {
+          console.warn('YouTube API returned no items or error:', data.error || data);
+        }
+      } catch (ytErr) {
+        console.error('YouTube API fetch error:', ytErr);
+      }
     }
 
-    const tracks = (data.items || []).map((item) => ({
-      id: item.id.videoId,
-      title: item.snippet.title,
-      artist: item.snippet.channelTitle,
-      image: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
-    }));
+    // 2. High-Availability Fallback: Fetch directly from Public YouTube Search Engine
+    // This ensures your users ALWAYS see results even if API quota is 100% exhausted
+    const fallbackUrl = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query.trim())}`;
+    const fallbackRes = await fetch(
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(query.trim())}&sp=EgIQAQ%253D%253D`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      }
+    );
 
-    return res.status(200).json(tracks);
+    const html = await fallbackRes.text();
+    const videoRegex = /"videoId":"([a-zA-Z0-9_-]{11})".*?"title":\{"runs":\[\{"text":"(.*?)"\}\].*?"ownerText":\{"runs":\[\{"text":"(.*?)"\}/g;
+
+    const fallbackTracks = [];
+    const seenIds = new Set();
+    let match;
+
+    while ((match = videoRegex.exec(html)) !== null && fallbackTracks.length < 20) {
+      const id = match[1];
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        fallbackTracks.push({
+          id: id,
+          title: match[2].replace(/\\u0026/g, '&'),
+          artist: match[3].replace(/\\u0026/g, '&'),
+          image: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+        });
+      }
+    }
+
+    if (fallbackTracks.length > 0) {
+      return res.status(200).json(fallbackTracks);
+    }
+
+    return res.status(200).json([]);
   } catch (error) {
-    console.error('Proxy Error:', error);
+    console.error('Search proxy error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
