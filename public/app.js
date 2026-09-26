@@ -9,7 +9,6 @@ let playbackTicker = null;
 // Native HTML5 audio element for OS lockscreen & notification retention
 const nativeAudio = new Audio();
 nativeAudio.preload = 'auto';
-// Silent data URI keeps background audio session active in Android & iOS
 nativeAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 nativeAudio.loop = true;
 
@@ -31,7 +30,7 @@ const chips = document.querySelectorAll('.chip');
 const playlistButtons = document.querySelectorAll('.playlist-btn');
 const footerTrigger = document.getElementById('footerTrackTrigger');
 
-// Top Navigation Elements
+// Navigation Elements
 const navHomeButtons = document.querySelectorAll('.nav-home-btn');
 const navExploreButtons = document.querySelectorAll('.nav-explore-btn');
 const navLibraryButtons = document.querySelectorAll('.nav-library-btn');
@@ -52,7 +51,7 @@ const fsNextBtn = document.getElementById('fsNextBtn');
 const fsQueueList = document.getElementById('fsQueueList');
 const fsCategoryBadge = document.getElementById('fsCategoryBadge');
 
-// Featured Artists
+// Curated Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -69,7 +68,7 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// MediaSession for Notification Tray Controls
+// MediaSession for Lockscreen Notification Controls
 function setupMediaSession(track) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -102,7 +101,7 @@ function setupMediaSession(track) {
   }
 }
 
-// Search tracks via backend proxy
+// Search tracks from backend
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api', {
@@ -118,7 +117,7 @@ async function fetchTracks(query) {
   }
 }
 
-// Language and Genre Detection
+// Safe Genre and Artist Sanitization
 function detectLanguageAndGenre(track) {
   const text = `${track.title} ${track.artist}`.toLowerCase();
 
@@ -138,11 +137,16 @@ function detectLanguageAndGenre(track) {
     return { query: 'Pakistani Drama OST Songs', label: 'Urdu OSTs' };
   }
 
-  const cleanArtist = track.artist.replace(/topic|vevo|official|music/gi, '').trim();
-  return { query: `${cleanArtist || track.title} songs`, label: `${cleanArtist || 'Related'} Radio` };
+  // Sanitize out any leaked JSON or navigationEndpoint fragments
+  let clean = track.artist.split('","')[0].split('",')[0].split('"')[0].replace(/topic|vevo|official|music/gi, '').trim();
+  if (clean.length > 25 || clean.includes('{')) {
+    clean = 'Related';
+  }
+
+  return { query: `${clean || track.title} songs`, label: `${clean || 'Related'} Radio` };
 }
 
-// Suggestions Sidebar / Modal
+// Suggestions Section in Fullscreen View
 async function fetchSmartSuggestions(track) {
   const category = detectLanguageAndGenre(track);
   if (fsCategoryBadge) fsCategoryBadge.textContent = category.label;
@@ -341,7 +345,7 @@ function startTimeline() {
   }, 1000);
 }
 
-// Load Track: Plays immediately via YouTube Embedded API and activates background media controls
+// Load Track: Plays immediately through embedded YouTube player and triggers media session
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -356,12 +360,12 @@ function loadTrack(index) {
   if (fsTrackArtist) fsTrackArtist.textContent = track.artist;
   if (fsTrackArt) fsTrackArt.src = track.image;
 
-  // 1. Play audio in embedded YouTube player
+  // 1. Play video stream
   if (ytPlayerIframe) {
     ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
   }
 
-  // 2. Play carrier stream so notification drawer and background audio session remain alive
+  // 2. Play silent carrier stream for phone notification card
   nativeAudio.play().catch(() => {});
 
   isPlaying = true;
