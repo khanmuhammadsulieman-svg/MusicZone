@@ -3,72 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aura Music Player</title>
+  <title>MUZiFY by sulieman khan</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-  <div class="ambient-glow"></div>
-
-  <div class="app-container">
-    <!-- Sidebar -->
+  <div class="app-layout">
+    <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
-      <div class="brand">
-        <i class="fa-solid fa-compact-disc brand-icon"></i>
-        <span>Aura</span>
+      <div class="sidebar-brand">
+        <i class="fa-brands fa-spotify brand-icon"></i>
+        <div class="brand-text">
+          <span class="brand-title">MUZiFY</span>
+          <span class="brand-sub">by sulieman khan</span>
+        </div>
       </div>
 
-      <div class="search-box">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="searchInput" placeholder="Search track, artist, video..." />
+      <nav class="nav-menu">
+        <button class="nav-item active" id="navHome"><i class="fa-solid fa-house"></i> Home</button>
+        <button class="nav-item" id="navExplore"><i class="fa-regular fa-compass"></i> Explore</button>
+        <button class="nav-item" id="navLibrary"><i class="fa-solid fa-lines-leaning"></i> Library</button>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section-title">QUICK PLAYLISTS</div>
+      <div class="playlist-quick-list">
+        <button class="playlist-btn" data-query="Top Global Hits 2026"><i class="fa-solid fa-fire"></i> Top Hits</button>
+        <button class="playlist-btn" data-query="Coke Studio Pakistan"><i class="fa-solid fa-record-vinyl"></i> Coke Studio</button>
+        <button class="playlist-btn" data-query="Punjabi Hits 2026"><i class="fa-solid fa-music"></i> Punjabi Hits</button>
+        <button class="playlist-btn" data-query="Chill Lofi Beats"><i class="fa-solid fa-mug-saucer"></i> Lo-Fi Chill</button>
       </div>
 
-      <div class="section-title">Search Results / Queue</div>
-      <ul id="trackList" class="track-list">
-        <li class="empty-state">Type a song name above to search</li>
-      </ul>
+      <div class="sidebar-footer">
+        <span>Crafted by Sulieman Khan</span>
+      </div>
     </aside>
 
-    <!-- Player Panel -->
-    <main class="player-panel">
-      <div class="glass-card">
-        <div class="album-art-wrapper">
-          <div id="ytPlayerContainer"></div>
-          <img id="albumArt" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600" alt="Album Cover" />
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Sticky Navigation Bar -->
+      <header class="topbar">
+        <div class="search-container">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="searchInput" placeholder="Search songs, artists, podcasts..." />
         </div>
 
-        <div class="track-info">
-          <h2 id="trackTitle">No Track Selected</h2>
-          <p id="artistName">Select a song from search results</p>
+        <div class="user-profile-badge">
+          <div class="avatar"><i class="fa-solid fa-user"></i></div>
+          <span>Sulieman</span>
         </div>
+      </header>
 
-        <!-- Progress Bar -->
-        <div class="progress-section">
-          <span id="currentTime">0:00</span>
-          <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-          </div>
-          <span id="duration">0:00</span>
-        </div>
+      <!-- Category Filter Chips -->
+      <section class="chips-row">
+        <button class="chip active" data-tab="all">All</button>
+        <button class="chip" data-tab="trending">Trending Now</button>
+        <button class="chip" data-tab="latest">Latest Releases</button>
+        <button class="chip" data-tab="artists">Artists</button>
+      </section>
 
-        <!-- Controls -->
-        <div class="controls">
-          <button id="prevBtn" class="control-btn" title="Previous"><i class="fa-solid fa-backward-step"></i></button>
-          <button id="playBtn" class="control-btn play-btn" title="Play/Pause"><i class="fa-solid fa-play"></i></button>
-          <button id="nextBtn" class="control-btn" title="Next"><i class="fa-solid fa-forward-step"></i></button>
-        </div>
-
-        <!-- Volume -->
-        <div class="volume-container">
-          <i class="fa-solid fa-volume-low"></i>
-          <input type="range" id="volumeSlider" min="0" max="100" step="1" value="80" />
-          <i class="fa-solid fa-volume-high"></i>
-        </div>
+      <!-- Dynamic Feed Container -->
+      <div class="content-feed" id="contentFeed">
+        <!-- Sections populated dynamically by app.js -->
       </div>
     </main>
   </div>
 
-  <!-- YouTube Iframe API -->
+  <!-- Bottom Player Bar (Spotify / YT Music Dock) -->
+  <footer class="player-bar">
+    <div class="player-left">
+      <div class="player-art-wrap">
+        <div id="ytPlayerContainer"></div>
+        <img id="currentTrackThumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100" alt="Track Art" />
+      </div>
+      <div class="current-track-info">
+        <div id="currentTrackTitle" class="track-title">Select a song to start</div>
+        <div id="currentTrackArtist" class="track-artist">MUZiFY by sulieman khan</div>
+      </div>
+      <button class="like-btn" id="likeBtn"><i class="fa-regular fa-heart"></i></button>
+    </div>
+
+    <div class="player-center">
+      <div class="player-controls">
+        <button id="shuffleBtn" class="control-btn-sub" title="Shuffle"><i class="fa-solid fa-shuffle"></i></button>
+        <button id="prevBtn" class="control-btn" title="Previous"><i class="fa-solid fa-backward-step"></i></button>
+        <button id="playBtn" class="control-btn-play" title="Play/Pause"><i class="fa-solid fa-play"></i></button>
+        <button id="nextBtn" class="control-btn" title="Next"><i class="fa-solid fa-forward-step"></i></button>
+        <button id="repeatBtn" class="control-btn-sub" title="Repeat"><i class="fa-solid fa-repeat"></i></button>
+      </div>
+
+      <div class="progress-wrap">
+        <span id="currentTime" class="time-label">0:00</span>
+        <div class="progress-bar-bg" id="progressBar">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <span id="duration" class="time-label">0:00</span>
+      </div>
+    </div>
+
+    <div class="player-right">
+      <i class="fa-solid fa-volume-high volume-icon"></i>
+      <div class="volume-slider-wrap">
+        <input type="range" id="volumeSlider" min="0" max="100" value="80" />
+      </div>
+    </div>
+  </footer>
+
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
