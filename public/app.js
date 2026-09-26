@@ -1,25 +1,37 @@
 let ytPlayer = null;
 let ytReady = false;
+let currentQueue = [];
+let currentIndex = -1;
+let progressTimer = null;
 
+// UI Elements
+const contentFeed = document.getElementById('contentFeed');
+const searchInput = document.getElementById('searchInput');
 const playBtn = document.getElementById('playBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
-const searchInput = document.getElementById('searchInput');
-const trackList = document.getElementById('trackList');
-const albumArt = document.getElementById('albumArt');
-const trackTitle = document.getElementById('trackTitle');
-const artistName = document.getElementById('artistName');
+const currentTrackThumb = document.getElementById('currentTrackThumb');
+const currentTrackTitle = document.getElementById('currentTrackTitle');
+const currentTrackArtist = document.getElementById('currentTrackArtist');
 const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
 const currentTimeEl = document.getElementById('currentTime');
 const durationEl = document.getElementById('duration');
 const volumeSlider = document.getElementById('volumeSlider');
+const chips = document.querySelectorAll('.chip');
+const playlistButtons = document.querySelectorAll('.playlist-btn');
 
-let queue = [];
-let currentIndex = -1;
-let progressTimer = null;
+// Top Curated Artists List
+const featuredArtists = [
+  { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
+  { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
+  { name: 'Sidhu Moose Wala', img: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300' },
+  { name: 'The Weeknd', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300' },
+  { name: 'Dua Lipa', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
+  { name: 'Taylor Swift', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
+];
 
-// Initialize YouTube Iframe Player
+// Initialize YouTube Embedded Audio Player
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%',
@@ -35,16 +47,12 @@ window.onYouTubeIframeAPIReady = function () {
     events: {
       onReady: () => {
         ytReady = true;
-        if (volumeSlider) {
-          ytPlayer.setVolume(Number(volumeSlider.value));
-        }
+        if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value));
       },
       onError: (e) => {
-        console.warn('YouTube Player Error:', e.data);
-        // Error 150/101 means copyright owner restricted external playback
+        console.warn('Playback error code:', e.data);
         if (e.data === 150 || e.data === 101) {
-          alert('Playback restricted by copyright holder on third-party sites. Skipping to next song...');
-          if (currentIndex < queue.length - 1) {
+          if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
           }
         }
@@ -52,14 +60,14 @@ window.onYouTubeIframeAPIReady = function () {
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
           playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-          albumArt.style.opacity = '0';
-          startProgressTracker();
+          currentTrackThumb.style.opacity = '0';
+          startProgress();
         } else if (event.data === YT.PlayerState.PAUSED) {
           playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
           clearInterval(progressTimer);
         } else if (event.data === YT.PlayerState.ENDED) {
           clearInterval(progressTimer);
-          if (currentIndex < queue.length - 1) {
+          if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
           } else {
             playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -72,75 +80,181 @@ window.onYouTubeIframeAPIReady = function () {
 
 function formatTime(sec) {
   if (isNaN(sec) || !isFinite(sec)) return '0:00';
-  const minutes = Math.floor(sec / 60);
-  const seconds = Math.floor(sec % 60).toString().padStart(2, '0');
-  return `${minutes}:${seconds}`;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }
 
-async function searchTracks(query) {
+// Fetch tracks from backend
+async function fetchTracks(query) {
   try {
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
-
     const data = await res.json();
-    console.log('Search results:', data);
-
-    queue = Array.isArray(data) ? data : [];
-    renderQueue();
+    return Array.isArray(data) ? data : [];
   } catch (err) {
-    console.error('Search request failed:', err);
+    console.error('Fetch error:', err);
+    return [];
   }
 }
 
-function renderQueue() {
-  trackList.innerHTML = '';
+// Build a modern Spotify section row
+function createSection(title, tracks) {
+  const section = document.createElement('section');
+  section.className = 'feed-section';
 
-  if (queue.length === 0) {
-    trackList.innerHTML = '<li class="empty-state">No tracks found.</li>';
-    return;
-  }
+  const header = document.createElement('div');
+  header.className = 'section-header';
+  header.innerHTML = `<h2 class="section-title">${title}</h2>`;
 
-  queue.forEach((track, index) => {
-    const li = document.createElement('li');
-    li.className = `track-item ${index === currentIndex ? 'active' : ''}`;
-    li.innerHTML = `
-      <img src="${track.image}" alt="${track.title}" />
-      <div class="track-details">
-        <h4>${track.title}</h4>
-        <p>${track.artist}</p>
+  const grid = document.createElement('div');
+  grid.className = 'music-grid';
+
+  tracks.forEach((track) => {
+    const card = document.createElement('div');
+    card.className = 'music-card';
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <img src="${track.image}" alt="${track.title}" loading="lazy" />
+        <button class="card-play-btn"><i class="fa-solid fa-play"></i></button>
       </div>
+      <div class="card-title">${track.title}</div>
+      <div class="card-sub">${track.artist}</div>
     `;
-    li.addEventListener('click', () => loadTrack(index));
-    trackList.appendChild(li);
+
+    card.addEventListener('click', () => {
+      currentQueue = tracks;
+      const idx = tracks.findIndex(t => t.id === track.id);
+      loadTrack(idx);
+    });
+
+    grid.appendChild(card);
   });
+
+  section.appendChild(header);
+  section.appendChild(grid);
+  return section;
 }
 
-function loadTrack(index) {
-  if (index < 0 || index >= queue.length) return;
-  currentIndex = index;
-  const track = queue[index];
+// Render Artists Row
+function createArtistsSection() {
+  const section = document.createElement('section');
+  section.className = 'feed-section';
 
-  trackTitle.textContent = track.title;
-  artistName.textContent = track.artist;
-  albumArt.src = track.image;
-  albumArt.style.opacity = '1';
+  const header = document.createElement('div');
+  header.className = 'section-header';
+  header.innerHTML = `<h2 class="section-title">Popular Artists</h2>`;
+
+  const grid = document.createElement('div');
+  grid.className = 'music-grid';
+
+  featuredArtists.forEach((artist) => {
+    const card = document.createElement('div');
+    card.className = 'music-card artist-card';
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <img src="${artist.img}" alt="${artist.name}" loading="lazy" />
+        <button class="card-play-btn"><i class="fa-solid fa-play"></i></button>
+      </div>
+      <div class="card-title">${artist.name}</div>
+      <div class="card-sub">Artist</div>
+    `;
+
+    card.addEventListener('click', async () => {
+      const tracks = await fetchTracks(`${artist.name} top songs`);
+      if (tracks.length > 0) {
+        currentQueue = tracks;
+        loadTrack(0);
+      }
+    });
+
+    grid.appendChild(card);
+  });
+
+  section.appendChild(header);
+  section.appendChild(grid);
+  return section;
+}
+
+// Load Home Tab
+async function loadHomeFeed() {
+  contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Loading trending tracks...</div>';
+
+  const [trending, latest] = await Promise.all([
+    fetchTracks('Top Hits 2026'),
+    fetchTracks('New Music Releases 2026')
+  ]);
+
+  contentFeed.innerHTML = '';
+  if (trending.length > 0) contentFeed.appendChild(createSection('Trending Hits', trending));
+  contentFeed.appendChild(createArtistsSection());
+  if (latest.length > 0) contentFeed.appendChild(createSection('Latest Releases', latest));
+}
+
+// Category Chip Handling
+chips.forEach((chip) => {
+  chip.addEventListener('click', async () => {
+    chips.forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+
+    const tab = chip.getAttribute('data-tab');
+    contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Loading...</div>';
+
+    if (tab === 'all') {
+      loadHomeFeed();
+    } else if (tab === 'trending') {
+      const tracks = await fetchTracks('Trending Music Global');
+      contentFeed.innerHTML = '';
+      contentFeed.appendChild(createSection('Trending Global', tracks));
+    } else if (tab === 'latest') {
+      const tracks = await fetchTracks('New Official Music Video 2026');
+      contentFeed.innerHTML = '';
+      contentFeed.appendChild(createSection('Latest Releases', tracks));
+    } else if (tab === 'artists') {
+      contentFeed.innerHTML = '';
+      contentFeed.appendChild(createArtistsSection());
+    }
+  });
+});
+
+// Quick Playlists Click
+playlistButtons.forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const q = btn.getAttribute('data-query');
+    contentFeed.innerHTML = `<div style="color:#b3b3b3; padding:20px;">Fetching ${q}...</div>`;
+    const tracks = await fetchTracks(q);
+    contentFeed.innerHTML = '';
+    contentFeed.appendChild(createSection(q, tracks));
+    if (tracks.length > 0) {
+      currentQueue = tracks;
+      loadTrack(0);
+    }
+  });
+});
+
+// Play song
+function loadTrack(index) {
+  if (index < 0 || index >= currentQueue.length) return;
+  currentIndex = index;
+  const track = currentQueue[index];
+
+  currentTrackTitle.textContent = track.title;
+  currentTrackArtist.textContent = track.artist;
+  currentTrackThumb.src = track.image;
+  currentTrackThumb.style.opacity = '1';
 
   if (ytPlayer && ytReady && track.id) {
-    ytPlayer.loadVideoById({
-      videoId: track.id,
-      startSeconds: 0
-    });
+    ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
     ytPlayer.unMute();
     ytPlayer.setVolume(Number(volumeSlider.value));
     ytPlayer.playVideo();
   }
-
-  renderQueue();
 }
 
+// Play / Pause
 playBtn.addEventListener('click', () => {
   if (!ytPlayer || !ytReady) return;
   const state = ytPlayer.getPlayerState();
@@ -152,24 +266,25 @@ playBtn.addEventListener('click', () => {
   }
 });
 
+// Controls
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
 
 nextBtn.addEventListener('click', () => {
-  if (currentIndex < queue.length - 1) loadTrack(currentIndex + 1);
+  if (currentIndex < currentQueue.length - 1) loadTrack(currentIndex + 1);
 });
 
-function startProgressTracker() {
+function startProgress() {
   clearInterval(progressTimer);
   progressTimer = setInterval(() => {
     if (ytPlayer && ytReady && ytPlayer.getCurrentTime) {
-      const current = ytPlayer.getCurrentTime();
-      const total = ytPlayer.getDuration();
-      if (total > 0) {
-        progressFill.style.width = `${(current / total) * 100}%`;
-        currentTimeEl.textContent = formatTime(current);
-        durationEl.textContent = formatTime(total);
+      const cur = ytPlayer.getCurrentTime();
+      const dur = ytPlayer.getDuration();
+      if (dur > 0) {
+        progressFill.style.width = `${(cur / dur) * 100}%`;
+        currentTimeEl.textContent = formatTime(cur);
+        durationEl.textContent = formatTime(dur);
       }
     }
   }, 500);
@@ -177,30 +292,37 @@ function startProgressTracker() {
 
 progressBar.addEventListener('click', (e) => {
   if (!ytPlayer || !ytReady) return;
-  const total = ytPlayer.getDuration();
-  if (total > 0) {
+  const dur = ytPlayer.getDuration();
+  if (dur > 0) {
     const rect = progressBar.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    ytPlayer.seekTo(percent * total, true);
+    const pct = (e.clientX - rect.left) / rect.width;
+    ytPlayer.seekTo(pct * dur, true);
   }
 });
 
 volumeSlider.addEventListener('input', (e) => {
   if (ytPlayer && ytReady) {
     ytPlayer.setVolume(Number(e.target.value));
-    if (e.target.value > 0) {
-      ytPlayer.unMute();
-    }
+    if (Number(e.target.value) > 0) ytPlayer.unMute();
   }
 });
 
-let debounceTimeout;
+// Search bar handler
+let debounceTimer;
 searchInput.addEventListener('input', (e) => {
-  clearTimeout(debounceTimeout);
+  clearTimeout(debounceTimer);
   const q = e.target.value.trim();
   if (q.length > 1) {
-    debounceTimeout = setTimeout(() => searchTracks(q), 350);
+    debounceTimer = setTimeout(async () => {
+      contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Searching...</div>';
+      const results = await fetchTracks(q);
+      contentFeed.innerHTML = '';
+      contentFeed.appendChild(createSection(`Results for "${q}"`, results));
+    }, 400);
+  } else if (q.length === 0) {
+    loadHomeFeed();
   }
 });
 
-searchTracks('trending songs');
+// Initialize on page open
+loadHomeFeed();
