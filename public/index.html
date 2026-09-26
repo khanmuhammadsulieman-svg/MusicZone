@@ -42,7 +42,6 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- Top Sticky Navigation Bar -->
       <header class="topbar">
         <div class="search-container">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -69,7 +68,7 @@
   </div>
 
   <!-- Bottom Player Bar -->
-  <footer class="player-bar">
+  <footer class="player-bar" id="playerBar">
     <div class="player-left">
       <div class="player-art-wrap">
         <img id="currentTrackThumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100" alt="Track Art" />
@@ -100,9 +99,9 @@
     </div>
 
     <div class="player-right">
-      <!-- Visible Mini Video Dock satisfying YouTube embed policy -->
+      <!-- Mini embedded video window satisfying YouTube's minimum player display policy -->
       <div class="mini-video-dock">
-        <div id="ytPlayerContainer"></div>
+        <div id="playerMount"></div>
       </div>
       <i class="fa-solid fa-volume-high volume-icon"></i>
       <div class="volume-slider-wrap">
