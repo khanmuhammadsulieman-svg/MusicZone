@@ -6,7 +6,7 @@ let currentTimeSec = 0;
 let totalDurationSec = 220;
 let playbackTicker = null;
 
-// Native HTML5 audio element driving system control center & lockscreen notifications
+// Native HTML5 audio engine driving background playback and system notification center
 const nativeAudio = new Audio();
 nativeAudio.preload = 'auto';
 
@@ -66,7 +66,7 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// System Notification Bar & Lockscreen Controls Integration
+// MediaSession API for Android/iOS Lockscreen & Control Center
 function setupMediaSession(track) {
   if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -99,7 +99,7 @@ function setupMediaSession(track) {
   }
 }
 
-// Track Search
+// Search tracks via backend
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api', {
@@ -115,7 +115,7 @@ async function fetchTracks(query) {
   }
 }
 
-// Genre / Language Classification
+// Language and Genre Detection
 function detectLanguageAndGenre(track) {
   const text = `${track.title} ${track.artist}`.toLowerCase();
 
@@ -306,6 +306,17 @@ playlistButtons.forEach((btn) => {
   });
 });
 
+// Auto-advance when native audio finishes
+nativeAudio.addEventListener('ended', () => {
+  if (currentIndex < currentQueue.length - 1) {
+    loadTrack(currentIndex + 1);
+  } else if (suggestedQueue.length > 0) {
+    const nextSuggested = suggestedQueue.shift();
+    currentQueue.push(nextSuggested);
+    loadTrack(currentQueue.length - 1);
+  }
+});
+
 // Real-time timeline updater
 function startTimeline() {
   clearInterval(playbackTicker);
@@ -330,7 +341,7 @@ function startTimeline() {
     if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
     if (fsDuration) fsDuration.textContent = formatTime(totalDurationSec);
 
-    if (currentTimeSec >= totalDurationSec) {
+    if (currentTimeSec >= totalDurationSec && (!nativeAudio.src || nativeAudio.paused)) {
       if (currentIndex < currentQueue.length - 1) {
         loadTrack(currentIndex + 1);
       } else if (suggestedQueue.length > 0) {
@@ -342,7 +353,7 @@ function startTimeline() {
   }, 1000);
 }
 
-// Track Loader: Resolves direct audio stream for phone background play & lockscreen notification
+// Track Loader: Plays directly through HTML5 Audio to maintain system lockscreen & background play
 async function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -360,7 +371,6 @@ async function loadTrack(index) {
   currentTimeSec = 0;
   totalDurationSec = 220;
 
-  // Resolve audio stream from backend resolver
   try {
     const streamRes = await fetch('/api', {
       method: 'POST',
@@ -371,20 +381,15 @@ async function loadTrack(index) {
 
     if (streamData && streamData.url) {
       nativeAudio.src = streamData.url;
-      if (streamData.duration) totalDurationSec = streamData.duration;
       await nativeAudio.play();
       if (ytPlayerIframe) ytPlayerIframe.src = '';
     } else {
-      nativeAudio.pause();
-      nativeAudio.src = '';
-      if (ytPlayerIframe) {
-        ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-      }
+      nativeAudio.src = `https://inv.tux.pizza/latest_version?id=${track.id}&itag=140`;
+      await nativeAudio.play();
     }
   } catch (err) {
-    if (ytPlayerIframe) {
-      ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-    }
+    nativeAudio.src = `https://inv.tux.pizza/latest_version?id=${track.id}&itag=140`;
+    nativeAudio.play().catch(() => {});
   }
 
   isPlaying = true;
@@ -397,12 +402,10 @@ async function loadTrack(index) {
   fetchSmartSuggestions(track);
 }
 
-// Global Play / Pause Handler
+// Play / Pause Toggle
 function togglePlayback() {
   if (isPlaying) {
-    if (nativeAudio.src) {
-      nativeAudio.pause();
-    }
+    if (nativeAudio.src) nativeAudio.pause();
     if (ytPlayerIframe && ytPlayerIframe.src) {
       ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
     }
@@ -411,9 +414,7 @@ function togglePlayback() {
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     isPlaying = false;
   } else {
-    if (nativeAudio.src) {
-      nativeAudio.play();
-    }
+    if (nativeAudio.src) nativeAudio.play();
     if (ytPlayerIframe && ytPlayerIframe.src) {
       ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
     }
@@ -468,6 +469,7 @@ if (fsNextBtn) {
   });
 }
 
+// Scrubber seeking
 function seekTimeline(e, barEl) {
   if (!barEl) return;
   const rect = barEl.getBoundingClientRect();
@@ -585,4 +587,5 @@ if (searchInput) {
   });
 }
 
+// Initial feed load
 loadHomeFeed();
