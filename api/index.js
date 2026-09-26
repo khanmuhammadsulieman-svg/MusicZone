@@ -1,16 +1,23 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+module.exports = async function handler(req, res) {
+  // Handle CORS natively
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
 
-const app = express();
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-app.use(cors());
-app.use(express.json());
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-// YouTube Music Search Proxy
-app.post('/api/search', async (req, res) => {
   try {
-    const { query } = req.body;
+    const { query } = req.body || {};
     if (!query || !query.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
     }
@@ -30,15 +37,9 @@ app.post('/api/search', async (req, res) => {
     });
 
     const data = await response.json();
-    res.json(data);
+    return res.status(200).json(data);
   } catch (error) {
-    console.error('Server proxy error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Search proxy error:', error);
+    return res.status(500).json({ error: error.message });
   }
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-module.exports = app;
+};
