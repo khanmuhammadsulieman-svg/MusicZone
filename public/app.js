@@ -32,18 +32,19 @@ const featuredArtists = [
   { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
 
-// Initialize YouTube Embedded Player
+// Initialize YouTube Iframe Player
 window.onYouTubeIframeAPIReady = function () {
-  ytPlayer = new YT.Player('ytPlayerContainer', {
+  ytPlayer = new YT.Player('playerMount', {
     height: '100%',
     width: '100%',
     playerVars: {
       autoplay: 1,
-      controls: 1,
+      controls: 0,
       modestbranding: 1,
       rel: 0,
       playsinline: 1,
-      enablejsapi: 1
+      enablejsapi: 1,
+      origin: window.location.origin
     },
     events: {
       onReady: () => {
@@ -55,8 +56,8 @@ window.onYouTubeIframeAPIReady = function () {
         }
       },
       onError: (e) => {
-        console.warn('Playback error code:', e.data);
-        // Error 150 / 101: Embedding blocked by label -> skip to next track
+        console.warn('YouTube Error Code:', e.data);
+        // Error 150/101 = Content owner disabled embedding
         if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
@@ -256,7 +257,7 @@ function loadTrack(index) {
   currentTrackArtist.textContent = track.artist;
   currentTrackThumb.src = track.image;
 
-  if (ytPlayer && ytReady && track.id) {
+  if (ytPlayer && ytReady && typeof ytPlayer.loadVideoById === 'function') {
     playVideoId(track.id);
   } else {
     pendingVideoId = track.id;
@@ -336,4 +337,5 @@ document.getElementById('navHome').addEventListener('click', () => {
   loadHomeFeed();
 });
 
+// Start initial feed
 loadHomeFeed();
