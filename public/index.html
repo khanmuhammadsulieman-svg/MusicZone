@@ -16,11 +16,11 @@
   <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3844/3844724.png" />
 
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
   <div class="app-layout">
-    <!-- Desktop Sidebar -->
+    <!-- Desktop Left Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-brand">
         <i class="fa-brands fa-spotify brand-icon"></i>
@@ -47,8 +47,8 @@
     </aside>
 
     <!-- Main Content Area -->
-    <main class="main-content">
-      <!-- Fixed Sticky Header -->
+    <main class="main-content" id="mainContent">
+      <!-- Fixed Clean Top Header (Search & Category Chips Only) -->
       <header class="fixed-top-header">
         <div class="top-row">
           <div class="mobile-brand">
@@ -72,14 +72,7 @@
           </div>
         </div>
 
-        <!-- Mobile Top Navigation Buttons -->
-        <div class="mobile-nav-pills">
-          <button class="top-nav-btn nav-home-btn active"><i class="fa-solid fa-house"></i> Home</button>
-          <button class="top-nav-btn nav-explore-btn"><i class="fa-solid fa-compass"></i> Explore</button>
-          <button class="top-nav-btn nav-library-btn"><i class="fa-solid fa-lines-leaning"></i> Library</button>
-        </div>
-
-        <!-- Filter Chips -->
+        <!-- Filter Chips Row -->
         <div class="filter-chips">
           <button class="chip active" data-tab="all">All</button>
           <button class="chip" data-tab="trending">Trending Now</button>
@@ -96,7 +89,7 @@
   <!-- Hidden Embedded YouTube Audio Player -->
   <iframe id="ytPlayerIframe" allow="autoplay" style="display:none;" src=""></iframe>
 
-  <!-- Persistent Bottom Playing Bar -->
+  <!-- Persistent Floating Music Player Bar -->
   <footer id="footerPlayer" class="footer-player">
     <div class="footer-left" id="footerTrackTrigger">
       <div class="footer-art-wrap">
@@ -135,7 +128,27 @@
     </div>
   </footer>
 
-  <!-- Fullscreen Player & Recommendations Modal -->
+  <!-- Android Native Style Bottom Navigation Bar -->
+  <nav class="android-bottom-bar" id="androidBottomBar">
+    <button class="bottom-tab-item active nav-home-btn">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </button>
+    <button class="bottom-tab-item nav-explore-btn">
+      <i class="fa-solid fa-compass"></i>
+      <span>Explore</span>
+    </button>
+    <button class="bottom-tab-item nav-search-btn" id="bottomNavSearch">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Search</span>
+    </button>
+    <button class="bottom-tab-item nav-library-btn">
+      <i class="fa-solid fa-lines-leaning"></i>
+      <span>Library</span>
+    </button>
+  </nav>
+
+  <!-- Fullscreen Modal Player & Recommendations -->
   <div id="fullscreenModal" class="fullscreen-modal">
     <div class="fs-header">
       <button id="fsCloseBtn" class="fs-close-btn"><i class="fa-solid fa-chevron-down"></i></button>
