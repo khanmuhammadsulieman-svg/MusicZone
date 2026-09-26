@@ -37,7 +37,7 @@ body {
   transition: height 0.25s ease;
 }
 
-/* Adjust main viewport when bottom player dock is active */
+/* Adjust viewport when player bar docks at bottom */
 body.has-active-player .app-layout {
   height: calc(100vh - 90px);
 }
@@ -373,14 +373,14 @@ body.has-active-player .app-layout {
   text-align: center;
 }
 
-/* Bottom Player Bar - Hidden Until User Plays A Song */
+/* Bottom Player Bar */
 .player-bar {
   height: 90px;
   background-color: #121212;
   border-top: 1px solid var(--border-color);
-  padding: 0 24px;
+  padding: 0 28px;
   display: none;
-  grid-template-columns: 280px 1fr 280px;
+  grid-template-columns: 280px 1fr 200px;
   align-items: center;
   z-index: 1000;
   position: fixed;
@@ -401,7 +401,6 @@ body.has-active-player .player-bar {
 }
 
 .player-art-wrap {
-  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 4px;
@@ -542,23 +541,19 @@ body.has-active-player .player-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 12px;
 }
 
-/* Compliant 16:9 Mini video dock for YouTube playback without autoplay restrictions */
+/* Off-screen rendering: Hides the video completely while preserving full audio playback */
 .mini-video-dock {
-  width: 110px;
-  height: 62px;
-  background-color: #000000;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  flex-shrink: 0;
-}
-
-.mini-video-dock iframe, #ytPlayerContainer {
-  width: 100% !important;
-  height: 100% !important;
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 200px;
+  height: 120px;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .volume-icon {
@@ -567,7 +562,7 @@ body.has-active-player .player-bar {
 }
 
 .volume-slider-wrap {
-  width: 80px;
+  width: 110px;
   display: flex;
   align-items: center;
 }
