@@ -47,6 +47,7 @@
           <i class="fa-brands fa-spotify brand-icon"></i>
           <span class="brand-title">MUZiFY</span>
         </div>
+
         <div class="search-container">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
           <input type="text" id="searchInput" placeholder="Search songs, artists, podcasts..." />
@@ -58,20 +59,20 @@
         </div>
       </header>
 
-      <!-- Category Filter Chips -->
-      <section class="chips-row">
+      <!-- Category Filter Chips (Always visible above feeds) -->
+      <div class="chips-row">
         <button class="chip active" data-tab="all">All</button>
         <button class="chip" data-tab="trending">Trending Now</button>
         <button class="chip" data-tab="latest">Latest Releases</button>
         <button class="chip" data-tab="artists">Artists</button>
-      </section>
+      </div>
 
-      <!-- Dynamic Feed Container -->
+      <!-- Dynamic Content Feed Container -->
       <div class="content-feed" id="contentFeed"></div>
     </main>
   </div>
 
-  <!-- Bottom Player Bar (Mini Player) -->
+  <!-- Bottom Player Bar -->
   <footer class="player-bar" id="playerBar">
     <div class="player-left" id="footerTrackTrigger" title="Click to open Fullscreen Player">
       <div class="player-screen-wrap">
@@ -116,7 +117,7 @@
     </div>
   </footer>
 
-  <!-- Mobile App Bottom Navigation Bar -->
+  <!-- Mobile Bottom Tab Navigation -->
   <nav class="mobile-nav-bar" id="mobileNavBar">
     <button class="mobile-nav-item active nav-home-btn">
       <i class="fa-solid fa-house"></i>
