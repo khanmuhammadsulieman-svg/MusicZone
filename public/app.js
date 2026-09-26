@@ -5,6 +5,9 @@ let isPlaying = false;
 let currentTimeSec = 0;
 let totalDurationSec = 220;
 let playbackTicker = null;
+let wakeLockSentinel = null;
+let audioCtx = null;
+let oscillatorNode = null;
 
 // DOM Elements
 const contentFeed = document.getElementById('contentFeed');
@@ -45,7 +48,7 @@ const fsNextBtn = document.getElementById('fsNextBtn');
 const fsQueueList = document.getElementById('fsQueueList');
 const fsCategoryBadge = document.getElementById('fsCategoryBadge');
 
-// Featured Artists
+// Curated Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -62,6 +65,41 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
+// Keep screen / thread alive on mobile devices
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !wakeLockSentinel) {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+    }
+  } catch (err) {
+    console.debug('WakeLock error:', err);
+  }
+}
+
+// Background Audio Carrier: Generates a continuous low-level frequency (0.0001 gain)
+// This registers an active hardware audio output stream with Android / iOS
+function initBackgroundAudioCarrier() {
+  try {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    if (!oscillatorNode) {
+      oscillatorNode = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.0001; // Inaudible
+      oscillatorNode.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillatorNode.start();
+    }
+  } catch (e) {
+    console.debug('WebAudio carrier init:', e);
+  }
+}
+
 // MediaSession API setup for background play and lockscreen controls
 function setupMediaSession(track) {
   if ('mediaSession' in navigator) {
@@ -75,6 +113,8 @@ function setupMediaSession(track) {
         { src: track.image, sizes: '512x512', type: 'image/jpeg' }
       ]
     });
+
+    navigator.mediaSession.playbackState = 'playing';
 
     navigator.mediaSession.setActionHandler('play', () => togglePlayback());
     navigator.mediaSession.setActionHandler('pause', () => togglePlayback());
@@ -92,6 +132,18 @@ function setupMediaSession(track) {
     });
   }
 }
+
+// Detect when user switches tabs or locks mobile screen
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isPlaying) {
+    // If mobile hides the page, keep the audio carrier running
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } else if (!document.hidden && isPlaying) {
+    requestWakeLock();
+  }
+});
 
 async function fetchTracks(query) {
   try {
@@ -259,7 +311,7 @@ async function loadHomeFeed() {
   if (latest.length > 0) contentFeed.appendChild(createSection('Latest Releases', latest));
 }
 
-// Category Tabs
+// Category Tabs Handlers
 chips.forEach((chip) => {
   chip.addEventListener('click', async () => {
     chips.forEach(c => c.classList.remove('active'));
@@ -331,7 +383,7 @@ function startTimeline() {
   }, 1000);
 }
 
-// Track Loader with Background Audio Engine Trigger
+// Track Loader with Background Wake-Lock & Audio Context Activation
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -346,9 +398,9 @@ function loadTrack(index) {
   if (fsTrackArtist) fsTrackArtist.textContent = track.artist;
   if (fsTrackArt) fsTrackArt.src = track.image;
 
-  if (bgAudioEngine) {
-    bgAudioEngine.play().catch(() => {});
-  }
+  // Activate WebAudio and WakeLock on user click
+  initBackgroundAudioCarrier();
+  requestWakeLock();
 
   if (ytPlayerIframe) {
     ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
@@ -367,15 +419,18 @@ function togglePlayback() {
   if (!ytPlayerIframe || !ytPlayerIframe.src) return;
   if (isPlaying) {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-    if (bgAudioEngine) bgAudioEngine.pause();
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     isPlaying = false;
   } else {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-    if (bgAudioEngine) bgAudioEngine.play().catch(() => {});
+    initBackgroundAudioCarrier();
+    requestWakeLock();
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
     isPlaying = true;
   }
 }
@@ -532,5 +587,4 @@ if (searchInput) {
   });
 }
 
-// Initial feed load
 loadHomeFeed();
