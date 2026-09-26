@@ -6,10 +6,11 @@ let currentTimeSec = 0;
 let totalDurationSec = 220;
 let playbackTicker = null;
 
-// DOM Mini-Player Elements
+// DOM Elements
 const contentFeed = document.getElementById('contentFeed');
 const searchInput = document.getElementById('searchInput');
 const ytPlayerIframe = document.getElementById('ytPlayerIframe');
+const bgAudioEngine = document.getElementById('bgAudioEngine');
 const playBtn = document.getElementById('playBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -23,7 +24,7 @@ const chips = document.querySelectorAll('.chip');
 const playlistButtons = document.querySelectorAll('.playlist-btn');
 const footerTrigger = document.getElementById('footerTrackTrigger');
 
-// Navigation Elements (Synced between Desktop Sidebar & Mobile Tabs)
+// Top Navigation Elements
 const navHomeButtons = document.querySelectorAll('.nav-home-btn');
 const navExploreButtons = document.querySelectorAll('.nav-explore-btn');
 const navLibraryButtons = document.querySelectorAll('.nav-library-btn');
@@ -44,7 +45,7 @@ const fsNextBtn = document.getElementById('fsNextBtn');
 const fsQueueList = document.getElementById('fsQueueList');
 const fsCategoryBadge = document.getElementById('fsCategoryBadge');
 
-// Curated Artists
+// Featured Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -59,6 +60,37 @@ function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
+}
+
+// MediaSession API setup for background play and lockscreen controls
+function setupMediaSession(track) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist,
+      album: 'MUZiFY',
+      artwork: [
+        { src: track.image, sizes: '96x96', type: 'image/jpeg' },
+        { src: track.image, sizes: '256x256', type: 'image/jpeg' },
+        { src: track.image, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => togglePlayback());
+    navigator.mediaSession.setActionHandler('pause', () => togglePlayback());
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      if (currentIndex > 0) loadTrack(currentIndex - 1);
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      if (currentIndex < currentQueue.length - 1) {
+        loadTrack(currentIndex + 1);
+      } else if (suggestedQueue.length > 0) {
+        const nextSuggested = suggestedQueue.shift();
+        currentQueue.push(nextSuggested);
+        loadTrack(currentQueue.length - 1);
+      }
+    });
+  }
 }
 
 async function fetchTracks(query) {
@@ -76,7 +108,7 @@ async function fetchTracks(query) {
   }
 }
 
-// Smart Language & Genre Detection
+// Language and Genre Detection
 function detectLanguageAndGenre(track) {
   const text = `${track.title} ${track.artist}`.toLowerCase();
 
@@ -226,7 +258,7 @@ async function loadHomeFeed() {
   if (latest.length > 0) contentFeed.appendChild(createSection('Latest Releases', latest));
 }
 
-// Category Tabs Handlers
+// Category Tabs
 chips.forEach((chip) => {
   chip.addEventListener('click', async () => {
     chips.forEach(c => c.classList.remove('active'));
@@ -252,7 +284,6 @@ chips.forEach((chip) => {
   });
 });
 
-// Quick Playlists Click
 playlistButtons.forEach((btn) => {
   btn.addEventListener('click', async () => {
     const q = btn.getAttribute('data-query');
@@ -299,6 +330,7 @@ function startTimeline() {
   }, 1000);
 }
 
+// Track Loader with Background Audio Engine Trigger
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -313,12 +345,18 @@ function loadTrack(index) {
   fsTrackArtist.textContent = track.artist;
   fsTrackArt.src = track.image;
 
+  // Keep mobile OS audio service active during app-switch
+  if (bgAudioEngine) {
+    bgAudioEngine.play().catch(() => {});
+  }
+
   ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
   isPlaying = true;
 
   playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 
+  setupMediaSession(track);
   startTimeline();
   fetchSmartSuggestions(track);
 }
@@ -327,11 +365,13 @@ function togglePlayback() {
   if (!ytPlayerIframe.src) return;
   if (isPlaying) {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+    if (bgAudioEngine) bgAudioEngine.pause();
     playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     isPlaying = false;
   } else {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    if (bgAudioEngine) bgAudioEngine.play().catch(() => {});
     playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     isPlaying = true;
@@ -403,9 +443,9 @@ fsCloseBtn.addEventListener('click', () => {
   fullscreenModal.classList.remove('active');
 });
 
-// Tab navigation handler
+// Synchronized Top Tab Navigation (Home, Explore, Library)
 function activateTab(tabName) {
-  document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.top-nav-btn').forEach(el => el.classList.remove('active'));
 
   if (tabName === 'home') {
     navHomeButtons.forEach(btn => btn.classList.add('active'));
