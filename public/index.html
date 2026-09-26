@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <!-- Pinned Top Navigation Tabs (Home, Explore, Library) -->
+    <!-- Pinned Top Navigation Tabs -->
     <nav class="top-nav-tabs" id="topNavTabs">
       <button class="top-nav-btn active nav-home-btn"><i class="fa-solid fa-house"></i> Home</button>
       <button class="top-nav-btn nav-explore-btn"><i class="fa-regular fa-compass"></i> Explore</button>
@@ -45,7 +45,6 @@
 
   <!-- App Structure -->
   <div class="app-layout">
-    <!-- Desktop Left Sidebar for Quick Playlists -->
     <aside class="sidebar">
       <div class="sidebar-section-title">QUICK PLAYLISTS</div>
       <div class="playlist-quick-list">
@@ -60,14 +59,13 @@
       </div>
     </aside>
 
-    <!-- Scrollable Music Feed -->
     <main class="main-content" id="mainContent">
       <div class="content-feed" id="contentFeed"></div>
     </main>
   </div>
 
-  <!-- Background Audio Anchor for Mobile Screen-Off / App-Switch Playback -->
-  <audio id="bgAudioEngine" loop playsinline preload="auto" src="https://raw.githubusercontent.com/anars/blank-audio/master/10-seconds-of-silence.mp3"></audio>
+  <!-- Native HTML5 Background Audio Carrier with real audible sine buffer for OS media retention -->
+  <audio id="bgAudioEngine" loop playsinline preload="auto"></audio>
 
   <!-- Bottom Mini Player Bar -->
   <footer class="player-bar" id="playerBar">
