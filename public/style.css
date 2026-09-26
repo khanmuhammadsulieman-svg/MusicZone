@@ -37,9 +37,8 @@ body {
   transition: height 0.25s ease;
 }
 
-/* Adjust viewport when player bar docks at bottom */
 body.has-active-player .app-layout {
-  height: calc(100vh - 90px);
+  height: calc(100vh - 100px);
 }
 
 /* Sidebar */
@@ -171,7 +170,6 @@ body.has-active-player .app-layout {
   gap: 24px;
 }
 
-/* Topbar */
 .topbar {
   display: flex;
   align-items: center;
@@ -233,7 +231,6 @@ body.has-active-player .app-layout {
   font-size: 0.75rem;
 }
 
-/* Category Filter Chips */
 .chips-row {
   display: flex;
   gap: 10px;
@@ -262,7 +259,6 @@ body.has-active-player .app-layout {
   font-weight: 600;
 }
 
-/* Feed Sections & Grids */
 .section-header {
   display: flex;
   align-items: center;
@@ -283,7 +279,6 @@ body.has-active-player .app-layout {
   gap: 20px;
 }
 
-/* Music Card */
 .music-card {
   background-color: var(--bg-card);
   border-radius: 8px;
@@ -359,7 +354,6 @@ body.has-active-player .app-layout {
   text-overflow: ellipsis;
 }
 
-/* Circular Artist Card */
 .artist-card .card-img-wrap {
   border-radius: 50%;
 }
@@ -375,12 +369,12 @@ body.has-active-player .app-layout {
 
 /* Bottom Player Bar */
 .player-bar {
-  height: 90px;
+  height: 100px;
   background-color: #121212;
   border-top: 1px solid var(--border-color);
   padding: 0 28px;
   display: none;
-  grid-template-columns: 280px 1fr 200px;
+  grid-template-columns: 340px 1fr 200px;
   align-items: center;
   z-index: 1000;
   position: fixed;
@@ -396,23 +390,31 @@ body.has-active-player .player-bar {
 .player-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   overflow: hidden;
 }
 
-.player-art-wrap {
-  width: 56px;
-  height: 56px;
-  border-radius: 4px;
+/* Beautiful Integrated Video Visualizer Screen */
+.player-screen-wrap {
+  position: relative;
+  width: 120px;
+  height: 68px;
+  border-radius: 8px;
   overflow: hidden;
   background-color: #000000;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+.player-screen-wrap iframe, #playerMount {
+  width: 120px !important;
+  height: 68px !important;
+  border: none;
+  display: block;
 }
 
 #currentTrackThumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: none; /* YouTube frame now handles visuals seamlessly */
 }
 
 .current-track-info {
@@ -480,8 +482,8 @@ body.has-active-player .player-bar {
 }
 
 .control-btn-play {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background-color: #ffffff;
   border: none;
@@ -489,7 +491,7 @@ body.has-active-player .player-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: transform 0.15s, background-color 0.15s;
 }
@@ -542,24 +544,6 @@ body.has-active-player .player-bar {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-}
-
-/* Audio Dock: Clipped out of human sight but fully active in DOM */
-.mini-video-dock {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 200px;
-  height: 120px;
-  clip-path: inset(100%);
-  pointer-events: none;
-  z-index: 10;
-}
-
-.mini-video-dock iframe, #playerMount {
-  width: 100% !important;
-  height: 100% !important;
-  border: none;
 }
 
 .volume-icon {
