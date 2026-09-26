@@ -21,18 +21,46 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const query = (body && body.query) || (req.query && req.query.query) || '';
-    if (!query.trim()) {
+    const { action, videoId, query } = body || {};
+
+    // 1. Action: Stream Resolver (Direct audio stream for lockscreen & background play)
+    if (action === 'stream' && videoId) {
+      const pipedInstances = [
+        'https://pipedapi.kavin.rocks',
+        'https://api.piped.private.coffee',
+        'https://pipedapi.tokhmi.xyz'
+      ];
+
+      for (const instance of pipedInstances) {
+        try {
+          const resp = await fetch(`${instance}/streams/${videoId}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.audioStreams && data.audioStreams.length > 0) {
+              // Select standard audio stream (m4a / opus)
+              const stream = data.audioStreams[0];
+              return res.status(200).json({ url: stream.url, duration: data.duration });
+            }
+          }
+        } catch (e) {
+          // try next instance
+        }
+      }
+
+      // Fallback if third-party audio resolvers are slow
+      return res.status(200).json({ url: null });
+    }
+
+    // 2. Action: Search Proxy
+    const searchQuery = query || (req.query && req.query.query) || '';
+    if (!searchQuery.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
     const apiKey = process.env.YOUTUBE_API_KEY;
 
-    // 1. Primary Attempt: Official YouTube Data API v3
     if (apiKey) {
-      // NOTE: Removed &videoCategoryId=10 so regional/Coke Studio/Bollywood songs appear reliably
-      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(query.trim())}&key=${apiKey}`;
-
+      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(searchQuery.trim())}&key=${apiKey}`;
       try {
         const response = await fetch(ytUrl);
         const data = await response.json();
@@ -51,19 +79,13 @@ module.exports = async function handler(req, res) {
             }));
 
           return res.status(200).json(tracks);
-        } else {
-          console.warn('YouTube API returned no items or error:', data.error || data);
         }
-      } catch (ytErr) {
-        console.error('YouTube API fetch error:', ytErr);
-      }
+      } catch (err) {}
     }
 
-    // 2. High-Availability Fallback: Fetch directly from Public YouTube Search Engine
-    // This ensures your users ALWAYS see results even if API quota is 100% exhausted
-    const fallbackUrl = `https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query.trim())}`;
+    // High availability scraping fallback
     const fallbackRes = await fetch(
-      `https://www.youtube.com/results?search_query=${encodeURIComponent(query.trim())}&sp=EgIQAQ%253D%253D`,
+      `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery.trim())}&sp=EgIQAQ%253D%253D`,
       {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -91,13 +113,8 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    if (fallbackTracks.length > 0) {
-      return res.status(200).json(fallbackTracks);
-    }
-
-    return res.status(200).json([]);
+    return res.status(200).json(fallbackTracks);
   } catch (error) {
-    console.error('Search proxy error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
