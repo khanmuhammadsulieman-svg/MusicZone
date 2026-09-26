@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aura Player</title>
+  <title>Aura Music Player</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
@@ -11,7 +11,7 @@
   <div class="ambient-glow"></div>
 
   <div class="app-container">
-    <!-- Sidebar / Library View -->
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="brand">
         <i class="fa-solid fa-compact-disc brand-icon"></i>
@@ -20,25 +20,27 @@
 
       <div class="search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="searchInput" placeholder="Search track or artist..." />
+        <input type="text" id="searchInput" placeholder="Search track, artist, video..." />
       </div>
 
       <div class="section-title">Search Results / Queue</div>
       <ul id="trackList" class="track-list">
-        <!-- Dynamic Track Items -->
+        <li class="empty-state">Type a song name above to search</li>
       </ul>
     </aside>
 
-    <!-- Main Player Display -->
+    <!-- Player Panel -->
     <main class="player-panel">
       <div class="glass-card">
         <div class="album-art-wrapper">
           <img id="albumArt" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600" alt="Album Cover" />
+          <!-- Hidden YouTube iframe container for audio streaming -->
+          <div id="ytPlayerContainer" style="display:none;"></div>
         </div>
 
         <div class="track-info">
           <h2 id="trackTitle">No Track Selected</h2>
-          <p id="artistName">Search or select a track to begin</p>
+          <p id="artistName">Select a song from search results</p>
         </div>
 
         <!-- Progress Bar -->
@@ -52,22 +54,23 @@
 
         <!-- Controls -->
         <div class="controls">
-          <button id="prevBtn" class="control-btn"><i class="fa-solid fa-backward-step"></i></button>
-          <button id="playBtn" class="control-btn play-btn"><i class="fa-solid fa-play"></i></button>
-          <button id="nextBtn" class="control-btn"><i class="fa-solid fa-forward-step"></i></button>
+          <button id="prevBtn" class="control-btn" title="Previous"><i class="fa-solid fa-backward-step"></i></button>
+          <button id="playBtn" class="control-btn play-btn" title="Play/Pause"><i class="fa-solid fa-play"></i></button>
+          <button id="nextBtn" class="control-btn" title="Next"><i class="fa-solid fa-forward-step"></i></button>
         </div>
 
-        <!-- Volume Bar -->
+        <!-- Volume -->
         <div class="volume-container">
           <i class="fa-solid fa-volume-low"></i>
-          <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" />
+          <input type="range" id="volumeSlider" min="0" max="100" step="1" value="80" />
           <i class="fa-solid fa-volume-high"></i>
         </div>
       </div>
     </main>
   </div>
 
-  <audio id="audioSource"></audio>
+  <!-- Load YouTube Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
 </html>
