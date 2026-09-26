@@ -23,35 +23,33 @@ module.exports = async function handler(req, res) {
 
     const { action, videoId, query } = body || {};
 
-    // 1. Action: Stream Resolver (Direct audio stream for lockscreen & background play)
+    // 1. Direct High-Bitrate Audio Stream Resolver
     if (action === 'stream' && videoId) {
-      const pipedInstances = [
-        'https://pipedapi.kavin.rocks',
-        'https://api.piped.private.coffee',
-        'https://pipedapi.tokhmi.xyz'
+      const audioSources = [
+        `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`,
+        `https://invidious.nerdvpn.de/latest_version?id=${videoId}&itag=140`,
+        `https://invidious.jing.rocks/latest_version?id=${videoId}&itag=140`,
+        `https://yt.artemislena.eu/latest_version?id=${videoId}&itag=140`
       ];
 
-      for (const instance of pipedInstances) {
+      for (const streamUrl of audioSources) {
         try {
-          const resp = await fetch(`${instance}/streams/${videoId}`);
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.audioStreams && data.audioStreams.length > 0) {
-              // Select standard audio stream (m4a / opus)
-              const stream = data.audioStreams[0];
-              return res.status(200).json({ url: stream.url, duration: data.duration });
-            }
+          const testRes = await fetch(streamUrl, { method: 'HEAD' });
+          if (testRes.ok || testRes.status === 302 || testRes.status === 200) {
+            return res.status(200).json({ url: streamUrl });
           }
         } catch (e) {
-          // try next instance
+          // try next mirror
         }
       }
 
-      // Fallback if third-party audio resolvers are slow
-      return res.status(200).json({ url: null });
+      // Direct fallback audio stream
+      return res.status(200).json({
+        url: `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`
+      });
     }
 
-    // 2. Action: Search Proxy
+    // 2. Search Handler
     const searchQuery = query || (req.query && req.query.query) || '';
     if (!searchQuery.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
@@ -83,7 +81,7 @@ module.exports = async function handler(req, res) {
       } catch (err) {}
     }
 
-    // High availability scraping fallback
+    // HTML Search Fallback
     const fallbackRes = await fetch(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery.trim())}&sp=EgIQAQ%253D%253D`,
       {
