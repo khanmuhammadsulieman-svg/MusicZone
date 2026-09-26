@@ -19,23 +19,29 @@ let queue = [];
 let currentIndex = -1;
 let progressTimer = null;
 
-// Initialize YouTube Iframe Player
+// Initialize YouTube Iframe Player inside the album art card
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('ytPlayerContainer', {
-    height: '0',
-    width: '0',
+    height: '100%',
+    width: '100%',
     playerVars: {
       autoplay: 1,
-      controls: 0
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      playsinline: 1
     },
     events: {
       onReady: () => {
         ytReady = true;
-        if (volumeSlider) ytPlayer.setVolume(volumeSlider.value);
+        if (volumeSlider) {
+          ytPlayer.setVolume(Number(volumeSlider.value));
+        }
       },
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
           playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+          albumArt.style.display = 'none'; // Reveal the active video
           startProgressTracker();
         } else if (event.data === YT.PlayerState.PAUSED) {
           playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -60,7 +66,7 @@ function formatTime(sec) {
   return `${minutes}:${seconds}`;
 }
 
-// Fetch tracks from backend YouTube search proxy
+// Search tracks via API proxy
 async function searchTracks(query) {
   try {
     const res = await fetch('/api/search', {
@@ -103,7 +109,7 @@ function renderQueue() {
   });
 }
 
-// Play selected track via YouTube Player
+// Play selected track with unmute and volume engagement
 function loadTrack(index) {
   if (index < 0 || index >= queue.length) return;
   currentIndex = index;
@@ -112,9 +118,16 @@ function loadTrack(index) {
   trackTitle.textContent = track.title;
   artistName.textContent = track.artist;
   albumArt.src = track.image;
+  albumArt.style.display = 'block';
 
   if (ytPlayer && ytReady && track.id) {
-    ytPlayer.loadVideoById(track.id);
+    ytPlayer.loadVideoById({
+      videoId: track.id,
+      startSeconds: 0
+    });
+    ytPlayer.unMute();
+    ytPlayer.setVolume(Number(volumeSlider.value));
+    ytPlayer.playVideo();
   }
 
   renderQueue();
@@ -127,11 +140,12 @@ playBtn.addEventListener('click', () => {
   if (state === YT.PlayerState.PLAYING) {
     ytPlayer.pauseVideo();
   } else {
+    ytPlayer.unMute();
     ytPlayer.playVideo();
   }
 });
 
-// Navigation buttons
+// Skip buttons
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -170,7 +184,10 @@ progressBar.addEventListener('click', (e) => {
 // Volume control
 volumeSlider.addEventListener('input', (e) => {
   if (ytPlayer && ytReady) {
-    ytPlayer.setVolume(e.target.value);
+    ytPlayer.setVolume(Number(e.target.value));
+    if (e.target.value > 0) {
+      ytPlayer.unMute();
+    }
   }
 });
 
@@ -184,5 +201,5 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Initial search on load
+// Initial search
 searchTracks('trending songs');
