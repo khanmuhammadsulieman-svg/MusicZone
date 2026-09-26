@@ -1,27 +1,20 @@
-let ytPlayer = null;
-let ytReady = false;
-let pendingVideoId = null;
 let currentQueue = [];
 let currentIndex = -1;
-let progressTimer = null;
+let isPlaying = false;
 
-// UI Elements
+// DOM Elements
 const contentFeed = document.getElementById('contentFeed');
 const searchInput = document.getElementById('searchInput');
+const ytPlayerIframe = document.getElementById('ytPlayerIframe');
 const playBtn = document.getElementById('playBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const currentTrackTitle = document.getElementById('currentTrackTitle');
 const currentTrackArtist = document.getElementById('currentTrackArtist');
-const progressBar = document.getElementById('progressBar');
-const progressFill = document.getElementById('progressFill');
-const currentTimeEl = document.getElementById('currentTime');
-const durationEl = document.getElementById('duration');
-const volumeSlider = document.getElementById('volumeSlider');
 const chips = document.querySelectorAll('.chip');
 const playlistButtons = document.querySelectorAll('.playlist-btn');
 
-// Featured Artists
+// Curated Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -30,64 +23,6 @@ const featuredArtists = [
   { name: 'Ali Zafar', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
   { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
-
-// YouTube API Setup
-window.onYouTubeIframeAPIReady = function () {
-  ytPlayer = new YT.Player('playerMount', {
-    height: '100%',
-    width: '100%',
-    playerVars: {
-      autoplay: 1,
-      controls: 0,
-      modestbranding: 1,
-      rel: 0,
-      playsinline: 1,
-      enablejsapi: 1
-    },
-    events: {
-      onReady: () => {
-        ytReady = true;
-        if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value) || 80);
-        if (pendingVideoId) {
-          playVideoId(pendingVideoId);
-          pendingVideoId = null;
-        }
-      },
-      onError: (e) => {
-        console.warn('Playback error code:', e.data);
-        // Automatically skip if song has copyright playback restrictions
-        if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
-          if (currentIndex < currentQueue.length - 1) {
-            loadTrack(currentIndex + 1);
-          }
-        }
-      },
-      onStateChange: (event) => {
-        if (event.data === YT.PlayerState.PLAYING) {
-          playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-          startProgress();
-        } else if (event.data === YT.PlayerState.PAUSED) {
-          playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-          clearInterval(progressTimer);
-        } else if (event.data === YT.PlayerState.ENDED) {
-          clearInterval(progressTimer);
-          if (currentIndex < currentQueue.length - 1) {
-            loadTrack(currentIndex + 1);
-          } else {
-            playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-          }
-        }
-      }
-    }
-  });
-};
-
-function formatTime(sec) {
-  if (isNaN(sec) || !isFinite(sec)) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
 
 async function fetchTracks(query) {
   try {
@@ -233,24 +168,6 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-function playVideoId(videoId) {
-  try {
-    if (!ytPlayer || !ytReady || typeof ytPlayer.loadVideoById !== 'function') {
-      pendingVideoId = videoId;
-      return;
-    }
-    ytPlayer.loadVideoById({
-      videoId: videoId,
-      startSeconds: 0
-    });
-    ytPlayer.unMute();
-    ytPlayer.setVolume(Number(volumeSlider.value) || 80);
-    ytPlayer.playVideo();
-  } catch (err) {
-    console.error('Play error:', err);
-  }
-}
-
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
@@ -261,19 +178,22 @@ function loadTrack(index) {
   currentTrackTitle.textContent = track.title;
   currentTrackArtist.textContent = track.artist;
 
-  playVideoId(track.id);
+  // Direct YouTube embed URL with autoplay enabled
+  ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1`;
+  isPlaying = true;
+  playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 }
 
 playBtn.addEventListener('click', () => {
-  if (!ytPlayer || !ytReady) return;
-  const state = ytPlayer.getPlayerState();
-  if (state === YT.PlayerState.PLAYING) {
-    ytPlayer.pauseVideo();
+  if (!ytPlayerIframe.src) return;
+  if (isPlaying) {
+    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
     playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    isPlaying = false;
   } else {
-    ytPlayer.unMute();
-    ytPlayer.playVideo();
+    ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
     playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    isPlaying = true;
   }
 });
 
@@ -283,38 +203,6 @@ prevBtn.addEventListener('click', () => {
 
 nextBtn.addEventListener('click', () => {
   if (currentIndex < currentQueue.length - 1) loadTrack(currentIndex + 1);
-});
-
-function startProgress() {
-  clearInterval(progressTimer);
-  progressTimer = setInterval(() => {
-    if (ytPlayer && ytReady && ytPlayer.getCurrentTime) {
-      const cur = ytPlayer.getCurrentTime();
-      const dur = ytPlayer.getDuration();
-      if (dur > 0) {
-        progressFill.style.width = `${(cur / dur) * 100}%`;
-        currentTimeEl.textContent = formatTime(cur);
-        durationEl.textContent = formatTime(dur);
-      }
-    }
-  }, 500);
-}
-
-progressBar.addEventListener('click', (e) => {
-  if (!ytPlayer || !ytReady) return;
-  const dur = ytPlayer.getDuration();
-  if (dur > 0) {
-    const rect = progressBar.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    ytPlayer.seekTo(pct * dur, true);
-  }
-});
-
-volumeSlider.addEventListener('input', (e) => {
-  if (ytPlayer && ytReady) {
-    ytPlayer.setVolume(Number(e.target.value));
-    if (Number(e.target.value) > 0) ytPlayer.unMute();
-  }
 });
 
 let debounceTimer;
