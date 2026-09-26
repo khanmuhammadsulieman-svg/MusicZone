@@ -544,16 +544,22 @@ body.has-active-player .player-bar {
   gap: 12px;
 }
 
-/* Off-screen rendering: Hides the video completely while preserving full audio playback */
+/* Audio Dock: Browser detects it as active, human eye cannot see it */
 .mini-video-dock {
   position: fixed;
-  top: -9999px;
-  left: -9999px;
+  bottom: 0;
+  right: 0;
   width: 200px;
   height: 120px;
-  opacity: 0;
+  opacity: 0.001;
   pointer-events: none;
-  visibility: hidden;
+  z-index: -9999;
+}
+
+.mini-video-dock iframe, #playerMount {
+  width: 100% !important;
+  height: 100% !important;
+  border: none;
 }
 
 .volume-icon {
