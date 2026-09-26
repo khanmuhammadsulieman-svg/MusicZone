@@ -33,9 +33,8 @@
     <main class="player-panel">
       <div class="glass-card">
         <div class="album-art-wrapper">
+          <div id="ytPlayerContainer"></div>
           <img id="albumArt" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600" alt="Album Cover" />
-          <!-- Hidden YouTube iframe container for audio streaming -->
-          <div id="ytPlayerContainer" style="display:none;"></div>
         </div>
 
         <div class="track-info">
@@ -69,7 +68,7 @@
     </main>
   </div>
 
-  <!-- Load YouTube Player API -->
+  <!-- YouTube Iframe API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
