@@ -1,5 +1,6 @@
 let ytPlayer = null;
 let ytReady = false;
+let pendingVideoId = null;
 let currentQueue = [];
 let currentIndex = -1;
 let progressTimer = null;
@@ -31,28 +32,31 @@ const featuredArtists = [
   { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
 
-// Initialize YouTube Embedded Audio Player
+// Initialize YouTube Embedded Player
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%',
     width: '100%',
     playerVars: {
       autoplay: 1,
-      controls: 0,
+      controls: 1,
       modestbranding: 1,
       rel: 0,
       playsinline: 1,
-      enablejsapi: 1,
-      origin: window.location.origin
+      enablejsapi: 1
     },
     events: {
       onReady: () => {
         ytReady = true;
         if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value));
+        if (pendingVideoId) {
+          playVideoId(pendingVideoId);
+          pendingVideoId = null;
+        }
       },
       onError: (e) => {
-        console.warn('YouTube Playback Code:', e.data);
-        // Error 150 or 101 means copyright owner restricts embedded web playback
+        console.warn('Playback error code:', e.data);
+        // Error 150 / 101: Embedding blocked by label -> skip to next track
         if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
@@ -62,7 +66,6 @@ window.onYouTubeIframeAPIReady = function () {
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
           playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-          currentTrackThumb.style.opacity = '0'; // Reveal the active video
           startProgress();
         } else if (event.data === YT.PlayerState.PAUSED) {
           playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -87,7 +90,6 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// Fetch tracks from backend
 async function fetchTracks(query) {
   try {
     const res = await fetch('/api/search', {
@@ -103,7 +105,6 @@ async function fetchTracks(query) {
   }
 }
 
-// Build a modern Spotify section row
 function createSection(title, tracks) {
   const section = document.createElement('section');
   section.className = 'feed-section';
@@ -141,7 +142,6 @@ function createSection(title, tracks) {
   return section;
 }
 
-// Render Artists Row
 function createArtistsSection() {
   const section = document.createElement('section');
   section.className = 'feed-section';
@@ -181,7 +181,6 @@ function createArtistsSection() {
   return section;
 }
 
-// Load Home Tab
 async function loadHomeFeed() {
   contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Loading MUZiFY Feed...</div>';
 
@@ -196,7 +195,6 @@ async function loadHomeFeed() {
   if (latest.length > 0) contentFeed.appendChild(createSection('Latest Releases', latest));
 }
 
-// Category Chip Handling
 chips.forEach((chip) => {
   chip.addEventListener('click', async () => {
     chips.forEach(c => c.classList.remove('active'));
@@ -222,7 +220,6 @@ chips.forEach((chip) => {
   });
 });
 
-// Quick Playlists Click
 playlistButtons.forEach((btn) => {
   btn.addEventListener('click', async () => {
     const q = btn.getAttribute('data-query');
@@ -237,33 +234,35 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-// Play selected track
+function playVideoId(videoId) {
+  try {
+    ytPlayer.loadVideoById({ videoId: videoId, startSeconds: 0 });
+    ytPlayer.unMute();
+    ytPlayer.setVolume(Number(volumeSlider.value) || 80);
+    ytPlayer.playVideo();
+  } catch (err) {
+    console.error('Play invocation error:', err);
+  }
+}
+
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
   const track = currentQueue[index];
 
-  // Reveal dock footer when track is selected
   document.body.classList.add('has-active-player');
 
   currentTrackTitle.textContent = track.title;
   currentTrackArtist.textContent = track.artist;
   currentTrackThumb.src = track.image;
-  currentTrackThumb.style.opacity = '1';
 
   if (ytPlayer && ytReady && track.id) {
-    ytPlayer.loadVideoById({
-      videoId: track.id,
-      startSeconds: 0
-    });
-    // Explicit unmute and play sequence to overcome browser audio restrictions
-    ytPlayer.unMute();
-    ytPlayer.setVolume(Number(volumeSlider.value) || 80);
-    ytPlayer.playVideo();
+    playVideoId(track.id);
+  } else {
+    pendingVideoId = track.id;
   }
 }
 
-// Play / Pause Toggle
 playBtn.addEventListener('click', () => {
   if (!ytPlayer || !ytReady) return;
   const state = ytPlayer.getPlayerState();
@@ -275,7 +274,6 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-// Skip Controls
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -316,7 +314,6 @@ volumeSlider.addEventListener('input', (e) => {
   }
 });
 
-// Search bar handler
 let debounceTimer;
 searchInput.addEventListener('input', (e) => {
   clearTimeout(debounceTimer);
@@ -333,12 +330,10 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Nav item toggle
 document.getElementById('navHome').addEventListener('click', () => {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('navHome').classList.add('active');
   loadHomeFeed();
 });
 
-// Initialize on page open
 loadHomeFeed();
