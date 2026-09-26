@@ -26,7 +26,6 @@ body {
   position: relative;
 }
 
-/* Subtle background illumination */
 .ambient-glow {
   position: absolute;
   width: 500px;
@@ -107,6 +106,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+}
+
+.empty-state {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 10px;
+  text-align: center;
 }
 
 .track-item {
@@ -131,13 +138,21 @@ body {
 }
 
 .track-details h4 {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 .track-details p {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
 }
 
 /* Player Panel */
@@ -158,8 +173,8 @@ body {
 }
 
 .album-art-wrapper {
-  width: 250px;
-  height: 250px;
+  width: 240px;
+  height: 240px;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -173,13 +188,18 @@ body {
 }
 
 .track-info h2 {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 600;
+  max-width: 380px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .track-info p {
   color: var(--text-dim);
   margin-top: 4px;
+  font-size: 0.9rem;
 }
 
 .progress-section {
