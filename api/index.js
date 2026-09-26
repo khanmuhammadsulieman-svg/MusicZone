@@ -21,35 +21,13 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const { action, videoId, query } = body || {};
+    const { action, query } = body || {};
 
-    // 1. Direct High-Bitrate Audio Stream Resolver
-    if (action === 'stream' && videoId) {
-      const audioSources = [
-        `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`,
-        `https://invidious.nerdvpn.de/latest_version?id=${videoId}&itag=140`,
-        `https://invidious.jing.rocks/latest_version?id=${videoId}&itag=140`,
-        `https://yt.artemislena.eu/latest_version?id=${videoId}&itag=140`
-      ];
-
-      for (const streamUrl of audioSources) {
-        try {
-          const testRes = await fetch(streamUrl, { method: 'HEAD' });
-          if (testRes.ok || testRes.status === 302 || testRes.status === 200) {
-            return res.status(200).json({ url: streamUrl });
-          }
-        } catch (e) {
-          // try next mirror
-        }
-      }
-
-      // Direct fallback audio stream
-      return res.status(200).json({
-        url: `https://inv.tux.pizza/latest_version?id=${videoId}&itag=140`
-      });
+    // Direct ping response
+    if (action === 'stream') {
+      return res.status(200).json({ status: 'ok' });
     }
 
-    // 2. Search Handler
     const searchQuery = query || (req.query && req.query.query) || '';
     if (!searchQuery.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
@@ -57,6 +35,7 @@ module.exports = async function handler(req, res) {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
 
+    // 1. YouTube Data API v3 Search
     if (apiKey) {
       const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(searchQuery.trim())}&key=${apiKey}`;
       try {
@@ -81,12 +60,12 @@ module.exports = async function handler(req, res) {
       } catch (err) {}
     }
 
-    // HTML Search Fallback
+    // 2. High-Resilience Fallback Scraper with Strict JSON Filtering
     const fallbackRes = await fetch(
       `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery.trim())}&sp=EgIQAQ%253D%253D`,
       {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       }
     );
@@ -102,10 +81,27 @@ module.exports = async function handler(req, res) {
       const id = match[1];
       if (!seenIds.has(id)) {
         seenIds.add(id);
+
+        let cleanTitle = match[2]
+          .replace(/\\u0026/g, '&')
+          .replace(/\\"/g, '"')
+          .replace(/\\/g, '');
+
+        let rawArtist = match[3]
+          .replace(/\\u0026/g, '&')
+          .replace(/\\"/g, '"')
+          .replace(/\\/g, '');
+
+        // Remove YouTube navigation endpoint parameters or leaked JSON metadata
+        let cleanArtist = rawArtist.split('","')[0].split('",')[0].split('"')[0].trim();
+        if (cleanArtist.includes('navigationEndpoint') || cleanArtist.includes('{')) {
+          cleanArtist = 'Trending Music';
+        }
+
         fallbackTracks.push({
           id: id,
-          title: match[2].replace(/\\u0026/g, '&'),
-          artist: match[3].replace(/\\u0026/g, '&'),
+          title: cleanTitle,
+          artist: cleanArtist || 'YouTube Music',
           image: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
         });
       }
