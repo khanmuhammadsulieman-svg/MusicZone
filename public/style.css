@@ -171,21 +171,28 @@ body.has-active-player .app-layout {
   padding: 0 10px;
 }
 
-/* Main Feed */
+/* Main Content Area */
 .main-content {
   background: linear-gradient(180deg, #1e1e1e 0%, var(--bg-surface) 300px);
   overflow-y: auto;
-  padding: 20px 32px 60px 32px;
+  padding: 20px 32px 80px 32px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
+/* Top Sticky Header Section */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(16px);
+  padding: 8px 0;
 }
 
 .search-container {
@@ -243,12 +250,17 @@ body.has-active-player .app-layout {
   font-size: 0.75rem;
 }
 
+/* Category Filter Chips Bar (Always visible) */
 .chips-row {
-  display: flex;
+  display: flex !important;
+  align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 4px 0 8px 0;
+  width: 100%;
+  position: relative;
+  z-index: 10;
 }
 
 .chips-row::-webkit-scrollbar {
@@ -257,14 +269,15 @@ body.has-active-player .app-layout {
 
 .chip {
   background-color: rgba(255, 255, 255, 0.08);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   color: #ffffff;
   font-size: 0.85rem;
   font-weight: 500;
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 500px;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: background-color 0.2s, color 0.2s;
 }
 
@@ -273,38 +286,40 @@ body.has-active-player .app-layout {
 }
 
 .chip.active {
-  background-color: #ffffff;
-  color: #000000;
-  font-weight: 600;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 700;
 }
 
+/* Music Sections & Grid */
 .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  margin-top: 12px;
+  margin-bottom: 14px;
+  margin-top: 8px;
 }
 
 .section-title {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .music-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 18px;
 }
 
+/* Music Card */
 .music-card {
   background-color: var(--bg-card);
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
   position: relative;
   transition: background-color 0.25s ease;
@@ -317,10 +332,10 @@ body.has-active-player .app-layout {
 .card-img-wrap {
   position: relative;
   width: 100%;
-  padding-bottom: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .card-img-wrap img {
@@ -336,20 +351,20 @@ body.has-active-player .app-layout {
   position: absolute;
   right: 8px;
   bottom: 8px;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background-color: var(--accent-green);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: #000000;
   opacity: 0;
   transform: translateY(8px);
   transition: all 0.25s ease;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .music-card:hover .card-play-btn {
@@ -358,7 +373,7 @@ body.has-active-player .app-layout {
 }
 
 .card-title {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -366,7 +381,7 @@ body.has-active-player .app-layout {
 }
 
 .card-sub {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -599,7 +614,7 @@ body.has-active-player .player-bar {
   cursor: pointer;
 }
 
-/* Mobile App Bottom Tab Bar (Hidden on desktop) */
+/* Mobile App Bottom Tab Bar */
 .mobile-nav-bar {
   display: none;
 }
@@ -749,6 +764,10 @@ body.has-active-player .player-bar {
   cursor: pointer;
 }
 
+.fs-like-btn:hover {
+  color: #ffffff;
+}
+
 .fs-progress-container {
   width: 100%;
   margin-bottom: 20px;
@@ -888,16 +907,15 @@ body.has-active-player .player-bar {
 }
 
 /* ====================================================
-   MOBILE RESPONSIVE APPLIKE LAYOUT (max-width: 768px)
+   MOBILE APPLIKE LAYOUT (max-width: 768px)
    ==================================================== */
 @media (max-width: 768px) {
-  /* Hide desktop sidebar */
   .sidebar {
     display: none !important;
   }
 
   .app-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 100% !important;
     height: calc(100vh - 65px);
   }
 
@@ -906,8 +924,8 @@ body.has-active-player .player-bar {
   }
 
   .main-content {
-    padding: 16px 16px 80px 16px;
-    gap: 18px;
+    padding: 12px 14px 80px 14px;
+    gap: 14px;
   }
 
   .mobile-brand-header {
@@ -916,38 +934,68 @@ body.has-active-player .player-bar {
 
   .topbar {
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
+    padding: 4px 0 8px 0;
   }
 
   .search-container {
     order: 3;
     max-width: 100%;
+    padding: 8px 16px;
   }
 
+  .chips-row {
+    padding: 2px 0 6px 0;
+    gap: 8px;
+  }
+
+  .chip {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+  }
+
+  /* 2-COLUMN COMPACT MOBILE MUSIC CARDS (Spotify/YT Music style) */
   .music-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
   }
 
   .music-card {
-    padding: 10px;
-    gap: 8px;
+    padding: 8px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+    max-width: 100% !important;
+  }
+
+  .card-img-wrap {
+    width: 100% !important;
+    border-radius: 6px !important;
+  }
+
+  .card-title {
+    font-size: 0.82rem !important;
+  }
+
+  .card-sub {
+    font-size: 0.72rem !important;
   }
 
   .card-play-btn {
     opacity: 1;
     transform: translateY(0);
-    width: 36px;
-    height: 36px;
-    font-size: 0.85rem;
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+    right: 6px;
+    bottom: 6px;
   }
 
-  /* Compact Bottom Mini-Player for Mobile */
+  /* Mobile Bottom Dock Player */
   .player-bar {
-    height: 64px;
-    padding: 0 16px;
+    height: 62px;
+    padding: 0 14px;
     grid-template-columns: 1fr auto;
-    bottom: 65px; /* Sits right above the mobile tabs */
+    bottom: 65px;
     background-color: #212121;
     border-radius: 8px 8px 0 0;
     border-top: none;
@@ -959,8 +1007,8 @@ body.has-active-player .player-bar {
   }
 
   .player-screen-wrap {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 6px;
   }
 
@@ -970,19 +1018,18 @@ body.has-active-player .player-bar {
 
   .track-title {
     font-size: 0.82rem;
-    max-width: 180px;
+    max-width: 170px;
   }
 
   .track-artist {
     font-size: 0.7rem;
-    max-width: 180px;
+    max-width: 170px;
   }
 
   .expand-btn {
     display: none;
   }
 
-  /* Keep only the play/pause button in mini player on mobile */
   .player-center {
     width: auto;
     max-width: none;
@@ -990,7 +1037,7 @@ body.has-active-player .player-bar {
   }
 
   .player-controls {
-    gap: 12px;
+    gap: 10px;
   }
 
   .player-controls #shuffleBtn,
@@ -1002,7 +1049,7 @@ body.has-active-player .player-bar {
     display: none !important;
   }
 
-  /* Native Mobile Bottom Navigation Bar */
+  /* Mobile Bottom Bar Navigation */
   .mobile-nav-bar {
     display: flex;
     position: fixed;
@@ -1045,14 +1092,14 @@ body.has-active-player .player-bar {
     color: var(--accent-green);
   }
 
-  /* Fullscreen adjustments on phone screens */
+  /* Fullscreen on phone */
   .fullscreen-player-modal {
-    padding: 16px 20px 28px 20px;
+    padding: 16px 18px 24px 18px;
   }
 
   .fs-art-wrapper {
-    max-width: 280px;
-    margin-bottom: 20px;
+    max-width: 260px;
+    margin-bottom: 18px;
   }
 
   .fs-info h1 {
@@ -1060,6 +1107,6 @@ body.has-active-player .player-bar {
   }
 
   .fs-queue-section {
-    padding: 16px;
+    padding: 14px;
   }
 }
