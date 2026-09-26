@@ -5,7 +5,7 @@ let currentQueue = [];
 let currentIndex = -1;
 let progressTimer = null;
 
-// UI Elements
+// DOM Elements
 const contentFeed = document.getElementById('contentFeed');
 const searchInput = document.getElementById('searchInput');
 const playBtn = document.getElementById('playBtn');
@@ -22,7 +22,7 @@ const volumeSlider = document.getElementById('volumeSlider');
 const chips = document.querySelectorAll('.chip');
 const playlistButtons = document.querySelectorAll('.playlist-btn');
 
-// Top Curated Artists List
+// Featured Artists
 const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
@@ -32,32 +32,30 @@ const featuredArtists = [
   { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
 
-// Initialize YouTube Iframe Player
+// YouTube Embedded Audio Initializer
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('playerMount', {
-    height: '100%',
-    width: '100%',
+    height: '120',
+    width: '200',
     playerVars: {
       autoplay: 1,
       controls: 0,
       modestbranding: 1,
       rel: 0,
       playsinline: 1,
-      enablejsapi: 1,
-      origin: window.location.origin
+      enablejsapi: 1
     },
     events: {
       onReady: () => {
         ytReady = true;
-        if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value));
+        if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value) || 80);
         if (pendingVideoId) {
           playVideoId(pendingVideoId);
           pendingVideoId = null;
         }
       },
       onError: (e) => {
-        console.warn('YouTube Error Code:', e.data);
-        // Error 150/101 = Content owner disabled embedding
+        console.warn('YouTube Error:', e.data);
         if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
@@ -237,12 +235,20 @@ playlistButtons.forEach((btn) => {
 
 function playVideoId(videoId) {
   try {
-    ytPlayer.loadVideoById({ videoId: videoId, startSeconds: 0 });
+    if (!ytPlayer || !ytReady || typeof ytPlayer.loadVideoById !== 'function') {
+      pendingVideoId = videoId;
+      return;
+    }
+    ytPlayer.loadVideoById({
+      videoId: videoId,
+      startSeconds: 0
+    });
     ytPlayer.unMute();
     ytPlayer.setVolume(Number(volumeSlider.value) || 80);
     ytPlayer.playVideo();
+    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   } catch (err) {
-    console.error('Play invocation error:', err);
+    console.error('Play error:', err);
   }
 }
 
@@ -257,11 +263,7 @@ function loadTrack(index) {
   currentTrackArtist.textContent = track.artist;
   currentTrackThumb.src = track.image;
 
-  if (ytPlayer && ytReady && typeof ytPlayer.loadVideoById === 'function') {
-    playVideoId(track.id);
-  } else {
-    pendingVideoId = track.id;
-  }
+  playVideoId(track.id);
 }
 
 playBtn.addEventListener('click', () => {
@@ -269,9 +271,11 @@ playBtn.addEventListener('click', () => {
   const state = ytPlayer.getPlayerState();
   if (state === YT.PlayerState.PLAYING) {
     ytPlayer.pauseVideo();
+    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
   } else {
     ytPlayer.unMute();
     ytPlayer.playVideo();
+    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   }
 });
 
@@ -337,5 +341,4 @@ document.getElementById('navHome').addEventListener('click', () => {
   loadHomeFeed();
 });
 
-// Start initial feed
 loadHomeFeed();
