@@ -5,13 +5,12 @@ let currentQueue = [];
 let currentIndex = -1;
 let progressTimer = null;
 
-// DOM Elements
+// UI Elements
 const contentFeed = document.getElementById('contentFeed');
 const searchInput = document.getElementById('searchInput');
 const playBtn = document.getElementById('playBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
-const currentTrackThumb = document.getElementById('currentTrackThumb');
 const currentTrackTitle = document.getElementById('currentTrackTitle');
 const currentTrackArtist = document.getElementById('currentTrackArtist');
 const progressBar = document.getElementById('progressBar');
@@ -32,11 +31,11 @@ const featuredArtists = [
   { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
 
-// YouTube Embedded Audio Initializer
+// YouTube API Setup
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('playerMount', {
-    height: '120',
-    width: '200',
+    height: '68',
+    width: '120',
     playerVars: {
       autoplay: 1,
       controls: 0,
@@ -55,7 +54,7 @@ window.onYouTubeIframeAPIReady = function () {
         }
       },
       onError: (e) => {
-        console.warn('YouTube Error:', e.data);
+        console.warn('Playback error code:', e.data);
         if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
@@ -246,7 +245,6 @@ function playVideoId(videoId) {
     ytPlayer.unMute();
     ytPlayer.setVolume(Number(volumeSlider.value) || 80);
     ytPlayer.playVideo();
-    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   } catch (err) {
     console.error('Play error:', err);
   }
@@ -261,7 +259,6 @@ function loadTrack(index) {
 
   currentTrackTitle.textContent = track.title;
   currentTrackArtist.textContent = track.artist;
-  currentTrackThumb.src = track.image;
 
   playVideoId(track.id);
 }
@@ -271,11 +268,9 @@ playBtn.addEventListener('click', () => {
   const state = ytPlayer.getPlayerState();
   if (state === YT.PlayerState.PLAYING) {
     ytPlayer.pauseVideo();
-    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
   } else {
     ytPlayer.unMute();
     ytPlayer.playVideo();
-    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   }
 });
 
