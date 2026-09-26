@@ -26,9 +26,9 @@ const featuredArtists = [
   { name: 'Arijit Singh', img: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300' },
   { name: 'Atif Aslam', img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300' },
   { name: 'Sidhu Moose Wala', img: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300' },
-  { name: 'The Weeknd', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300' },
-  { name: 'Dua Lipa', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
-  { name: 'Taylor Swift', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
+  { name: 'Rahat Fateh Ali Khan', img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300' },
+  { name: 'Ali Zafar', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=300' },
+  { name: 'Shreya Ghoshal', img: 'https://images.unsplash.com/photo-1520523839898-50712825e617?w=300' }
 ];
 
 // Initialize YouTube Embedded Audio Player
@@ -42,6 +42,7 @@ window.onYouTubeIframeAPIReady = function () {
       modestbranding: 1,
       rel: 0,
       playsinline: 1,
+      enablejsapi: 1,
       origin: window.location.origin
     },
     events: {
@@ -50,8 +51,9 @@ window.onYouTubeIframeAPIReady = function () {
         if (volumeSlider) ytPlayer.setVolume(Number(volumeSlider.value));
       },
       onError: (e) => {
-        console.warn('Playback error code:', e.data);
-        if (e.data === 150 || e.data === 101) {
+        console.warn('YouTube Playback Code:', e.data);
+        // Error 150 or 101 means copyright owner restricts embedded web playback
+        if (e.data === 150 || e.data === 101 || e.data === 100 || e.data === 2) {
           if (currentIndex < currentQueue.length - 1) {
             loadTrack(currentIndex + 1);
           }
@@ -60,7 +62,7 @@ window.onYouTubeIframeAPIReady = function () {
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
           playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-          currentTrackThumb.style.opacity = '0';
+          currentTrackThumb.style.opacity = '0'; // Reveal the active video
           startProgress();
         } else if (event.data === YT.PlayerState.PAUSED) {
           playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -164,7 +166,7 @@ function createArtistsSection() {
     `;
 
     card.addEventListener('click', async () => {
-      const tracks = await fetchTracks(`${artist.name} top songs`);
+      const tracks = await fetchTracks(`${artist.name} songs`);
       if (tracks.length > 0) {
         currentQueue = tracks;
         loadTrack(0);
@@ -181,7 +183,7 @@ function createArtistsSection() {
 
 // Load Home Tab
 async function loadHomeFeed() {
-  contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Loading trending tracks...</div>';
+  contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Loading MUZiFY Feed...</div>';
 
   const [trending, latest] = await Promise.all([
     fetchTracks('Top Hits 2026'),
@@ -210,7 +212,7 @@ chips.forEach((chip) => {
       contentFeed.innerHTML = '';
       contentFeed.appendChild(createSection('Trending Global', tracks));
     } else if (tab === 'latest') {
-      const tracks = await fetchTracks('New Official Music Video 2026');
+      const tracks = await fetchTracks('New Official Music 2026');
       contentFeed.innerHTML = '';
       contentFeed.appendChild(createSection('Latest Releases', tracks));
     } else if (tab === 'artists') {
@@ -235,11 +237,14 @@ playlistButtons.forEach((btn) => {
   });
 });
 
-// Play song
+// Play selected track
 function loadTrack(index) {
   if (index < 0 || index >= currentQueue.length) return;
   currentIndex = index;
   const track = currentQueue[index];
+
+  // Reveal dock footer when track is selected
+  document.body.classList.add('has-active-player');
 
   currentTrackTitle.textContent = track.title;
   currentTrackArtist.textContent = track.artist;
@@ -247,14 +252,18 @@ function loadTrack(index) {
   currentTrackThumb.style.opacity = '1';
 
   if (ytPlayer && ytReady && track.id) {
-    ytPlayer.loadVideoById({ videoId: track.id, startSeconds: 0 });
+    ytPlayer.loadVideoById({
+      videoId: track.id,
+      startSeconds: 0
+    });
+    // Explicit unmute and play sequence to overcome browser audio restrictions
     ytPlayer.unMute();
-    ytPlayer.setVolume(Number(volumeSlider.value));
+    ytPlayer.setVolume(Number(volumeSlider.value) || 80);
     ytPlayer.playVideo();
   }
 }
 
-// Play / Pause
+// Play / Pause Toggle
 playBtn.addEventListener('click', () => {
   if (!ytPlayer || !ytReady) return;
   const state = ytPlayer.getPlayerState();
@@ -266,7 +275,7 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-// Controls
+// Skip Controls
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -322,6 +331,13 @@ searchInput.addEventListener('input', (e) => {
   } else if (q.length === 0) {
     loadHomeFeed();
   }
+});
+
+// Nav item toggle
+document.getElementById('navHome').addEventListener('click', () => {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('navHome').classList.add('active');
+  loadHomeFeed();
 });
 
 // Initialize on page open
