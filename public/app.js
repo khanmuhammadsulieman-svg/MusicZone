@@ -95,7 +95,7 @@ function setupMediaSession(track) {
 
 async function fetchTracks(query) {
   try {
-    const res = await fetch('/api/search', {
+    const res = await fetch('/api', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
@@ -135,12 +135,13 @@ function detectLanguageAndGenre(track) {
 // Recommendations
 async function fetchSmartSuggestions(track) {
   const category = detectLanguageAndGenre(track);
-  fsCategoryBadge.textContent = category.label;
-  fsQueueList.innerHTML = '<div class="queue-loading">Finding matching songs...</div>';
+  if (fsCategoryBadge) fsCategoryBadge.textContent = category.label;
+  if (fsQueueList) fsQueueList.innerHTML = '<div class="queue-loading">Finding matching songs...</div>';
 
   const results = await fetchTracks(category.query);
   suggestedQueue = results.filter(t => t.id !== track.id);
 
+  if (!fsQueueList) return;
   fsQueueList.innerHTML = '';
   if (suggestedQueue.length === 0) {
     fsQueueList.innerHTML = '<div class="queue-loading">No recommendations found.</div>';
@@ -304,19 +305,19 @@ function startTimeline() {
   currentTimeSec = 0;
   totalDurationSec = 220;
 
-  durationEl.textContent = formatTime(totalDurationSec);
-  fsDuration.textContent = formatTime(totalDurationSec);
+  if (durationEl) durationEl.textContent = formatTime(totalDurationSec);
+  if (fsDuration) fsDuration.textContent = formatTime(totalDurationSec);
 
   playbackTicker = setInterval(() => {
     if (!isPlaying) return;
     currentTimeSec++;
     const pct = Math.min((currentTimeSec / totalDurationSec) * 100, 100);
 
-    progressFill.style.width = `${pct}%`;
-    fsProgressFill.style.width = `${pct}%`;
+    if (progressFill) progressFill.style.width = `${pct}%`;
+    if (fsProgressFill) fsProgressFill.style.width = `${pct}%`;
 
-    currentTimeEl.textContent = formatTime(currentTimeSec);
-    fsCurrentTime.textContent = formatTime(currentTimeSec);
+    if (currentTimeEl) currentTimeEl.textContent = formatTime(currentTimeSec);
+    if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
 
     if (currentTimeSec >= totalDurationSec) {
       if (currentIndex < currentQueue.length - 1) {
@@ -338,23 +339,24 @@ function loadTrack(index) {
 
   document.body.classList.add('has-active-player');
 
-  currentTrackTitle.textContent = track.title;
-  currentTrackArtist.textContent = track.artist;
+  if (currentTrackTitle) currentTrackTitle.textContent = track.title;
+  if (currentTrackArtist) currentTrackArtist.textContent = track.artist;
 
-  fsTrackTitle.textContent = track.title;
-  fsTrackArtist.textContent = track.artist;
-  fsTrackArt.src = track.image;
+  if (fsTrackTitle) fsTrackTitle.textContent = track.title;
+  if (fsTrackArtist) fsTrackArtist.textContent = track.artist;
+  if (fsTrackArt) fsTrackArt.src = track.image;
 
-  // Keep mobile OS audio service active during app-switch
   if (bgAudioEngine) {
     bgAudioEngine.play().catch(() => {});
   }
 
-  ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+  if (ytPlayerIframe) {
+    ytPlayerIframe.src = `https://www.youtube.com/embed/${track.id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+  }
   isPlaying = true;
 
-  playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-  fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+  if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+  if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 
   setupMediaSession(track);
   startTimeline();
@@ -362,86 +364,103 @@ function loadTrack(index) {
 }
 
 function togglePlayback() {
-  if (!ytPlayerIframe.src) return;
+  if (!ytPlayerIframe || !ytPlayerIframe.src) return;
   if (isPlaying) {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
     if (bgAudioEngine) bgAudioEngine.pause();
-    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-    fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
     isPlaying = false;
   } else {
     ytPlayerIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
     if (bgAudioEngine) bgAudioEngine.play().catch(() => {});
-    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-    fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    if (fsPlayBtn) fsPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
     isPlaying = true;
   }
 }
 
-playBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  togglePlayback();
-});
-fsPlayBtn.addEventListener('click', togglePlayback);
+if (playBtn) {
+  playBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePlayback();
+  });
+}
+if (fsPlayBtn) fsPlayBtn.addEventListener('click', togglePlayback);
 
-prevBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (currentIndex > 0) loadTrack(currentIndex - 1);
-});
-fsPrevBtn.addEventListener('click', () => {
-  if (currentIndex > 0) loadTrack(currentIndex - 1);
-});
+if (prevBtn) {
+  prevBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentIndex > 0) loadTrack(currentIndex - 1);
+  });
+}
+if (fsPrevBtn) {
+  fsPrevBtn.addEventListener('click', () => {
+    if (currentIndex > 0) loadTrack(currentIndex - 1);
+  });
+}
 
-nextBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (currentIndex < currentQueue.length - 1) {
-    loadTrack(currentIndex + 1);
-  } else if (suggestedQueue.length > 0) {
-    const nextSuggested = suggestedQueue.shift();
-    currentQueue.push(nextSuggested);
-    loadTrack(currentQueue.length - 1);
-  }
-});
-fsNextBtn.addEventListener('click', () => {
-  if (currentIndex < currentQueue.length - 1) {
-    loadTrack(currentIndex + 1);
-  } else if (suggestedQueue.length > 0) {
-    const nextSuggested = suggestedQueue.shift();
-    currentQueue.push(nextSuggested);
-    loadTrack(currentQueue.length - 1);
-  }
-});
+if (nextBtn) {
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentIndex < currentQueue.length - 1) {
+      loadTrack(currentIndex + 1);
+    } else if (suggestedQueue.length > 0) {
+      const nextSuggested = suggestedQueue.shift();
+      currentQueue.push(nextSuggested);
+      loadTrack(currentQueue.length - 1);
+    }
+  });
+}
+if (fsNextBtn) {
+  fsNextBtn.addEventListener('click', () => {
+    if (currentIndex < currentQueue.length - 1) {
+      loadTrack(currentIndex + 1);
+    } else if (suggestedQueue.length > 0) {
+      const nextSuggested = suggestedQueue.shift();
+      currentQueue.push(nextSuggested);
+      loadTrack(currentQueue.length - 1);
+    }
+  });
+}
 
 function seekTimeline(e, barEl) {
+  if (!barEl) return;
   const rect = barEl.getBoundingClientRect();
   const clickX = e.clientX - rect.left;
   const pct = Math.max(0, Math.min(1, clickX / rect.width));
   currentTimeSec = Math.floor(pct * totalDurationSec);
 
-  progressFill.style.width = `${pct * 100}%`;
-  fsProgressFill.style.width = `${pct * 100}%`;
+  if (progressFill) progressFill.style.width = `${pct * 100}%`;
+  if (fsProgressFill) fsProgressFill.style.width = `${pct * 100}%`;
 
-  currentTimeEl.textContent = formatTime(currentTimeSec);
-  fsCurrentTime.textContent = formatTime(currentTimeSec);
+  if (currentTimeEl) currentTimeEl.textContent = formatTime(currentTimeSec);
+  if (fsCurrentTime) fsCurrentTime.textContent = formatTime(currentTimeSec);
 
-  ytPlayerIframe.contentWindow.postMessage(
-    JSON.stringify({ event: 'command', func: 'seekTo', args: [currentTimeSec, true] }),
-    '*'
-  );
+  if (ytPlayerIframe && ytPlayerIframe.contentWindow) {
+    ytPlayerIframe.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: 'seekTo', args: [currentTimeSec, true] }),
+      '*'
+    );
+  }
 }
 
-progressBar.addEventListener('click', (e) => seekTimeline(e, progressBar));
-fsProgressBar.addEventListener('click', (e) => seekTimeline(e, fsProgressBar));
+if (progressBar) progressBar.addEventListener('click', (e) => seekTimeline(e, progressBar));
+if (fsProgressBar) fsProgressBar.addEventListener('click', (e) => seekTimeline(e, fsProgressBar));
 
-footerTrigger.addEventListener('click', () => {
-  if (currentIndex >= 0) {
-    fullscreenModal.classList.add('active');
-  }
-});
+if (footerTrigger) {
+  footerTrigger.addEventListener('click', () => {
+    if (currentIndex >= 0 && fullscreenModal) {
+      fullscreenModal.classList.add('active');
+    }
+  });
+}
 
-fsCloseBtn.addEventListener('click', () => {
-  fullscreenModal.classList.remove('active');
-});
+if (fsCloseBtn) {
+  fsCloseBtn.addEventListener('click', () => {
+    if (fullscreenModal) fullscreenModal.classList.remove('active');
+  });
+}
 
 // Synchronized Top Tab Navigation (Home, Explore, Library)
 function activateTab(tabName) {
@@ -490,20 +509,28 @@ navHomeButtons.forEach(btn => btn.addEventListener('click', () => activateTab('h
 navExploreButtons.forEach(btn => btn.addEventListener('click', () => activateTab('explore')));
 navLibraryButtons.forEach(btn => btn.addEventListener('click', () => activateTab('library')));
 
+// Live Search with feedback
 let debounceTimer;
-searchInput.addEventListener('input', (e) => {
-  clearTimeout(debounceTimer);
-  const q = e.target.value.trim();
-  if (q.length > 1) {
-    debounceTimer = setTimeout(async () => {
-      contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Searching...</div>';
-      const results = await fetchTracks(q);
-      contentFeed.innerHTML = '';
-      contentFeed.appendChild(createSection(`Results for "${q}"`, results));
-    }, 400);
-  } else if (q.length === 0) {
-    loadHomeFeed();
-  }
-});
+if (searchInput) {
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(debounceTimer);
+    const q = e.target.value.trim();
+    if (q.length > 1) {
+      debounceTimer = setTimeout(async () => {
+        contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">Searching for "' + q + '"...</div>';
+        const results = await fetchTracks(q);
+        contentFeed.innerHTML = '';
+        if (results.length > 0) {
+          contentFeed.appendChild(createSection(`Results for "${q}"`, results));
+        } else {
+          contentFeed.innerHTML = '<div style="color:#b3b3b3; padding:20px;">No songs found for "' + q + '". Try another keyword.</div>';
+        }
+      }, 350);
+    } else if (q.length === 0) {
+      loadHomeFeed();
+    }
+  });
+}
 
+// Initial feed load
 loadHomeFeed();
