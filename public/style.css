@@ -27,14 +27,12 @@ body {
   user-select: none;
 }
 
-/* App Grid Structure */
 .app-layout {
   display: grid;
   grid-template-columns: 240px 1fr;
   flex: 1;
   height: 100vh;
   overflow: hidden;
-  transition: height 0.25s ease;
 }
 
 body.has-active-player .app-layout {
@@ -374,7 +372,7 @@ body.has-active-player .app-layout {
   border-top: 1px solid var(--border-color);
   padding: 0 28px;
   display: none;
-  grid-template-columns: 340px 1fr 200px;
+  grid-template-columns: 360px 1fr 200px;
   align-items: center;
   z-index: 1000;
   position: fixed;
@@ -394,27 +392,23 @@ body.has-active-player .player-bar {
   overflow: hidden;
 }
 
-/* Beautiful Integrated Video Visualizer Screen */
+/* Legitimate YouTube viewable frame */
 .player-screen-wrap {
   position: relative;
-  width: 120px;
-  height: 68px;
-  border-radius: 8px;
+  width: 130px;
+  height: 74px;
+  border-radius: 6px;
   overflow: hidden;
   background-color: #000000;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
 }
 
 .player-screen-wrap iframe, #playerMount {
-  width: 120px !important;
-  height: 68px !important;
+  width: 100% !important;
+  height: 100% !important;
   border: none;
   display: block;
-}
-
-#currentTrackThumb {
-  display: none; /* YouTube frame now handles visuals seamlessly */
 }
 
 .current-track-info {
