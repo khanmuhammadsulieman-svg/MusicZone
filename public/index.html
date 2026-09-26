@@ -64,22 +64,19 @@
       </section>
 
       <!-- Dynamic Feed Container -->
-      <div class="content-feed" id="contentFeed">
-        <!-- Sections populated dynamically by app.js -->
-      </div>
+      <div class="content-feed" id="contentFeed"></div>
     </main>
   </div>
 
-  <!-- Bottom Player Bar (Spotify / YT Music Dock) -->
+  <!-- Bottom Player Bar -->
   <footer class="player-bar">
     <div class="player-left">
       <div class="player-art-wrap">
-        <div id="ytPlayerContainer"></div>
         <img id="currentTrackThumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=100" alt="Track Art" />
       </div>
       <div class="current-track-info">
-        <div id="currentTrackTitle" class="track-title">Select a song to start</div>
-        <div id="currentTrackArtist" class="track-artist">MUZiFY by sulieman khan</div>
+        <div id="currentTrackTitle" class="track-title"></div>
+        <div id="currentTrackArtist" class="track-artist"></div>
       </div>
       <button class="like-btn" id="likeBtn"><i class="fa-regular fa-heart"></i></button>
     </div>
@@ -103,6 +100,10 @@
     </div>
 
     <div class="player-right">
+      <!-- Visible Mini Video Dock satisfying YouTube embed policy -->
+      <div class="mini-video-dock">
+        <div id="ytPlayerContainer"></div>
+      </div>
       <i class="fa-solid fa-volume-high volume-icon"></i>
       <div class="volume-slider-wrap">
         <input type="range" id="volumeSlider" min="0" max="100" value="80" />
