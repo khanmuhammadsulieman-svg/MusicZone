@@ -31,7 +31,7 @@ window.onYouTubeIframeAPIReady = function () {
     events: {
       onReady: () => {
         ytReady = true;
-        ytPlayer.setVolume(80);
+        if (volumeSlider) ytPlayer.setVolume(volumeSlider.value);
       },
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
@@ -60,52 +60,19 @@ function formatTime(sec) {
   return `${minutes}:${seconds}`;
 }
 
-// Extract tracks from MusicAPI YouTube structure
-function extractYouTubeTracks(data) {
-  let items = [];
-
-  if (Array.isArray(data)) {
-    data.forEach(entry => {
-      if (entry.youtube) items.push(entry.youtube);
-      else items.push(entry);
-    });
-  } else if (data && typeof data === 'object') {
-    if (Array.isArray(data.youtube)) items = data.youtube;
-    else if (Array.isArray(data.tracks)) items = data.tracks;
-    else if (Array.isArray(data.results)) items = data.results;
-  }
-
-  return items.map(track => {
-    // Extract video ID from youtube URL or id field
-    let videoId = track.id || track.videoId || '';
-    if (track.url && track.url.includes('v=')) {
-      videoId = track.url.split('v=')[1].split('&')[0];
-    }
-
-    return {
-      id: videoId,
-      title: track.title || track.name || 'Unknown Track',
-      artist: Array.isArray(track.artists)
-        ? track.artists.map(a => (typeof a === 'string' ? a : a.name)).join(', ')
-        : (track.artist || track.channelTitle || 'YouTube Artist'),
-      image: track.imageUrl || (track.images && track.images[0] && track.images[0].url) || (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600')
-    };
-  });
-}
-
-// Fetch tracks from API proxy
+// Fetch tracks from backend YouTube search proxy
 async function searchTracks(query) {
   try {
-    const res = await fetch('/api', {
+    const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
 
     const data = await res.json();
-    console.log('API response:', data);
+    console.log('Search results:', data);
 
-    queue = extractYouTubeTracks(data);
+    queue = Array.isArray(data) ? data : [];
     renderQueue();
   } catch (err) {
     console.error('Search request failed:', err);
@@ -164,7 +131,7 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-// Skip buttons
+// Navigation buttons
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -207,7 +174,7 @@ volumeSlider.addEventListener('input', (e) => {
   }
 });
 
-// Debounced search
+// Debounced live search
 let debounceTimeout;
 searchInput.addEventListener('input', (e) => {
   clearTimeout(debounceTimeout);
@@ -217,5 +184,5 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Initial search
+// Initial search on load
 searchTracks('trending songs');
