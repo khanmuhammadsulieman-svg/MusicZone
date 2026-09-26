@@ -19,7 +19,7 @@ let queue = [];
 let currentIndex = -1;
 let progressTimer = null;
 
-// Initialize YouTube Iframe Player inside the album art card
+// Initialize YouTube Iframe Player
 window.onYouTubeIframeAPIReady = function () {
   ytPlayer = new YT.Player('ytPlayerContainer', {
     height: '100%',
@@ -29,7 +29,8 @@ window.onYouTubeIframeAPIReady = function () {
       controls: 0,
       modestbranding: 1,
       rel: 0,
-      playsinline: 1
+      playsinline: 1,
+      origin: window.location.origin
     },
     events: {
       onReady: () => {
@@ -38,10 +39,20 @@ window.onYouTubeIframeAPIReady = function () {
           ytPlayer.setVolume(Number(volumeSlider.value));
         }
       },
+      onError: (e) => {
+        console.warn('YouTube Player Error:', e.data);
+        // Error 150/101 means copyright owner restricted external playback
+        if (e.data === 150 || e.data === 101) {
+          alert('Playback restricted by copyright holder on third-party sites. Skipping to next song...');
+          if (currentIndex < queue.length - 1) {
+            loadTrack(currentIndex + 1);
+          }
+        }
+      },
       onStateChange: (event) => {
         if (event.data === YT.PlayerState.PLAYING) {
           playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-          albumArt.style.display = 'none'; // Reveal the active video
+          albumArt.style.opacity = '0';
           startProgressTracker();
         } else if (event.data === YT.PlayerState.PAUSED) {
           playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -66,7 +77,6 @@ function formatTime(sec) {
   return `${minutes}:${seconds}`;
 }
 
-// Search tracks via API proxy
 async function searchTracks(query) {
   try {
     const res = await fetch('/api/search', {
@@ -85,7 +95,6 @@ async function searchTracks(query) {
   }
 }
 
-// Render queue list in sidebar
 function renderQueue() {
   trackList.innerHTML = '';
 
@@ -109,7 +118,6 @@ function renderQueue() {
   });
 }
 
-// Play selected track with unmute and volume engagement
 function loadTrack(index) {
   if (index < 0 || index >= queue.length) return;
   currentIndex = index;
@@ -118,7 +126,7 @@ function loadTrack(index) {
   trackTitle.textContent = track.title;
   artistName.textContent = track.artist;
   albumArt.src = track.image;
-  albumArt.style.display = 'block';
+  albumArt.style.opacity = '1';
 
   if (ytPlayer && ytReady && track.id) {
     ytPlayer.loadVideoById({
@@ -133,7 +141,6 @@ function loadTrack(index) {
   renderQueue();
 }
 
-// Play / Pause Toggle
 playBtn.addEventListener('click', () => {
   if (!ytPlayer || !ytReady) return;
   const state = ytPlayer.getPlayerState();
@@ -145,7 +152,6 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-// Skip buttons
 prevBtn.addEventListener('click', () => {
   if (currentIndex > 0) loadTrack(currentIndex - 1);
 });
@@ -154,7 +160,6 @@ nextBtn.addEventListener('click', () => {
   if (currentIndex < queue.length - 1) loadTrack(currentIndex + 1);
 });
 
-// Progress Tracker
 function startProgressTracker() {
   clearInterval(progressTimer);
   progressTimer = setInterval(() => {
@@ -170,7 +175,6 @@ function startProgressTracker() {
   }, 500);
 }
 
-// Seek bar click
 progressBar.addEventListener('click', (e) => {
   if (!ytPlayer || !ytReady) return;
   const total = ytPlayer.getDuration();
@@ -181,7 +185,6 @@ progressBar.addEventListener('click', (e) => {
   }
 });
 
-// Volume control
 volumeSlider.addEventListener('input', (e) => {
   if (ytPlayer && ytReady) {
     ytPlayer.setVolume(Number(e.target.value));
@@ -191,7 +194,6 @@ volumeSlider.addEventListener('input', (e) => {
   }
 });
 
-// Debounced live search
 let debounceTimeout;
 searchInput.addEventListener('input', (e) => {
   clearTimeout(debounceTimeout);
@@ -201,5 +203,4 @@ searchInput.addEventListener('input', (e) => {
   }
 });
 
-// Initial search
 searchTracks('trending songs');
