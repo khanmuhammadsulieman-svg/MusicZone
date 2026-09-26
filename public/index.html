@@ -8,25 +8,45 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Desktop Left Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-brand">
+  <!-- Fixed Top Header & Navigation -->
+  <header class="fixed-top-header" id="fixedTopHeader">
+    <div class="top-row">
+      <div class="brand-title-wrap">
         <i class="fa-brands fa-spotify brand-icon"></i>
-        <div class="brand-text">
-          <span class="brand-title">MUZiFY</span>
-          <span class="brand-sub">by sulieman khan</span>
-        </div>
+        <span class="brand-name">MUZiFY</span>
       </div>
 
-      <nav class="nav-menu">
-        <button class="nav-item active nav-home-btn"><i class="fa-solid fa-house"></i> Home</button>
-        <button class="nav-item nav-explore-btn"><i class="fa-regular fa-compass"></i> Explore</button>
-        <button class="nav-item nav-library-btn"><i class="fa-solid fa-lines-leaning"></i> Library</button>
-      </nav>
+      <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="searchInput" placeholder="Search songs, artists, playlists..." />
+      </div>
 
-      <div class="sidebar-divider"></div>
+      <div class="user-profile-badge">
+        <div class="avatar"><i class="fa-solid fa-user"></i></div>
+        <span>Sulieman</span>
+      </div>
+    </div>
 
+    <!-- Pinned Top Navigation Tabs (Home, Explore, Library) -->
+    <nav class="top-nav-tabs" id="topNavTabs">
+      <button class="top-nav-btn active nav-home-btn"><i class="fa-solid fa-house"></i> Home</button>
+      <button class="top-nav-btn nav-explore-btn"><i class="fa-regular fa-compass"></i> Explore</button>
+      <button class="top-nav-btn nav-library-btn"><i class="fa-solid fa-lines-leaning"></i> Library</button>
+    </nav>
+
+    <!-- Pinned Category Chips Row -->
+    <div class="chips-row">
+      <button class="chip active" data-tab="all">All</button>
+      <button class="chip" data-tab="trending">Trending Now</button>
+      <button class="chip" data-tab="latest">Latest Releases</button>
+      <button class="chip" data-tab="artists">Artists</button>
+    </div>
+  </header>
+
+  <!-- App Structure -->
+  <div class="app-layout">
+    <!-- Desktop Left Sidebar for Quick Playlists -->
+    <aside class="sidebar">
       <div class="sidebar-section-title">QUICK PLAYLISTS</div>
       <div class="playlist-quick-list">
         <button class="playlist-btn" data-query="Top Global Hits 2026"><i class="fa-solid fa-fire"></i> Top Hits</button>
@@ -40,46 +60,23 @@
       </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-      <header class="topbar">
-        <div class="mobile-brand-header">
-          <i class="fa-brands fa-spotify brand-icon"></i>
-          <span class="brand-title">MUZiFY</span>
-        </div>
-
-        <div class="search-container">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="searchInput" placeholder="Search songs, artists, podcasts..." />
-        </div>
-
-        <div class="user-profile-badge">
-          <div class="avatar"><i class="fa-solid fa-user"></i></div>
-          <span>Sulieman</span>
-        </div>
-      </header>
-
-      <!-- Category Filter Chips (Always visible above feeds) -->
-      <div class="chips-row">
-        <button class="chip active" data-tab="all">All</button>
-        <button class="chip" data-tab="trending">Trending Now</button>
-        <button class="chip" data-tab="latest">Latest Releases</button>
-        <button class="chip" data-tab="artists">Artists</button>
-      </div>
-
-      <!-- Dynamic Content Feed Container -->
+    <!-- Scrollable Music Feed -->
+    <main class="main-content" id="mainContent">
       <div class="content-feed" id="contentFeed"></div>
     </main>
   </div>
 
-  <!-- Bottom Player Bar -->
+  <!-- Background Audio Anchor for Mobile Screen-Off / App-Switch Playback -->
+  <audio id="bgAudioEngine" loop playsinline preload="auto" src="https://raw.githubusercontent.com/anars/blank-audio/master/10-seconds-of-silence.mp3"></audio>
+
+  <!-- Bottom Mini Player Bar -->
   <footer class="player-bar" id="playerBar">
     <div class="player-left" id="footerTrackTrigger" title="Click to open Fullscreen Player">
       <div class="player-screen-wrap">
         <iframe 
           id="ytPlayerIframe" 
           src="" 
-          allow="autoplay; encrypted-media" 
+          allow="autoplay; encrypted-media; picture-in-picture" 
           allowfullscreen>
         </iframe>
       </div>
@@ -87,7 +84,6 @@
         <div id="currentTrackTitle" class="track-title">Select a track</div>
         <div id="currentTrackArtist" class="track-artist">MUZiFY Player</div>
       </div>
-      <button class="expand-btn" title="Open Fullscreen Player"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
     </div>
 
     <div class="player-center">
@@ -117,23 +113,7 @@
     </div>
   </footer>
 
-  <!-- Mobile Bottom Tab Navigation -->
-  <nav class="mobile-nav-bar" id="mobileNavBar">
-    <button class="mobile-nav-item active nav-home-btn">
-      <i class="fa-solid fa-house"></i>
-      <span>Home</span>
-    </button>
-    <button class="mobile-nav-item nav-explore-btn">
-      <i class="fa-regular fa-compass"></i>
-      <span>Explore</span>
-    </button>
-    <button class="mobile-nav-item nav-library-btn">
-      <i class="fa-solid fa-lines-leaning"></i>
-      <span>Library</span>
-    </button>
-  </nav>
-
-  <!-- Fullscreen Spotify Modal Player with Up Next Queue -->
+  <!-- Fullscreen Modal View -->
   <div class="fullscreen-player-modal" id="fullscreenModal">
     <div class="fs-backdrop-glow" id="fsBackdrop"></div>
     <div class="fs-top-bar">
@@ -156,7 +136,6 @@
           <button class="fs-like-btn" id="fsLikeBtn"><i class="fa-regular fa-heart"></i></button>
         </div>
 
-        <!-- Progress Container -->
         <div class="fs-progress-container">
           <div class="progress-bar-bg fs-progress-bg" id="fsProgressBar">
             <div class="progress-bar-fill" id="fsProgressFill" style="width: 0%;"></div>
@@ -167,7 +146,6 @@
           </div>
         </div>
 
-        <!-- Controls Row -->
         <div class="fs-controls-row">
           <button id="fsShuffleBtn" class="control-btn-sub"><i class="fa-solid fa-shuffle"></i></button>
           <button id="fsPrevBtn" class="control-btn fs-nav-btn"><i class="fa-solid fa-backward-step"></i></button>
@@ -177,7 +155,6 @@
         </div>
       </div>
 
-      <!-- Suggested Next Music Section -->
       <div class="fs-queue-section">
         <div class="fs-queue-header">
           <span class="fs-queue-title">Up Next (Recommended)</span>
