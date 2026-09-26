@@ -1,8 +1,7 @@
 module.exports = async function handler(req, res) {
-  // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
@@ -12,45 +11,44 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(200).json({ status: 'MusicZone YouTube API Active' });
-  }
-
   try {
-    // Robust body parsing for Vercel Serverless
     let body = req.body;
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
-      } catch (err) {
+      } catch (e) {
         body = {};
       }
     }
 
-    const query = body && body.query ? body.query.trim() : '';
-    if (!query) {
+    const query = (body && body.query) || (req.query && req.query.query) || '';
+    if (!query.trim()) {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    const clientId = process.env.MUSICAPI_CLIENT_ID || '179a2da2-8780-4249-8024-274ab29914f8';
-    const clientSecret = process.env.MUSICAPI_CLIENT_SECRET || '5f1dd3e4-e052-4197-b1d7-dcdecb19e331';
-    const authHeader = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyDUm__fKxJRBFC5q9J1vMXqLU0J4kF7ecQ';
 
-    // Query MusicAPI for YouTube tracks
-    const targetUrl = `https://api.musicapi.com/public/search?track=${encodeURIComponent(query)}&sources=youtube`;
+    // Direct YouTube Search
+    const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query.trim())}&key=${apiKey}`;
 
-    const response = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': authHeader
-      }
-    });
-
+    const response = await fetch(ytUrl);
     const data = await response.json();
-    return res.status(200).json(data);
+
+    if (!response.ok) {
+      console.error('YouTube Data API Error:', data);
+      return res.status(response.status).json(data);
+    }
+
+    const tracks = (data.items || []).map((item) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      artist: item.snippet.channelTitle,
+      image: item.snippet.thumbnails.high ? item.snippet.thumbnails.high.url : item.snippet.thumbnails.default.url
+    }));
+
+    return res.status(200).json(tracks);
   } catch (error) {
-    console.error('API Error:', error);
-    return res.status(500).json({ error: 'Internal Server Error', message: error.message });
+    console.error('Proxy Error:', error);
+    return res.status(500).json({ error: error.message });
   }
 };
