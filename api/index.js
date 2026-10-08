@@ -1,3 +1,52 @@
+const PIPED = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+  'https://api.piped.private.coffee'
+];
+const INVIDIOUS = ['https://inv.nadeko.net', 'https://yewtu.be'];
+
+async function getJson(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function fromPiped(base, id) {
+  const d = await getJson(`${base}/streams/${id}`);
+  const list = (d.audioStreams || []).filter((a) => a.url && /mp4|m4a|webm|opus/i.test(a.mimeType || ''));
+  if (!list.length) throw new Error('no audio');
+  // Prefer m4a (best compatibility on Android/iOS), then highest bitrate
+  list.sort((a, b) => (/mp4/.test(b.mimeType) - /mp4/.test(a.mimeType)) || (b.bitrate - a.bitrate));
+  return { url: list[0].url, mime: list[0].mimeType, duration: d.duration || 0 };
+}
+
+async function fromInvidious(base, id) {
+  const d = await getJson(`${base}/api/v1/videos/${id}?local=true&fields=lengthSeconds,adaptiveFormats`);
+  const list = (d.adaptiveFormats || []).filter((f) => f.url && /^audio\//.test(f.type || ''));
+  if (!list.length) throw new Error('no audio');
+  list.sort((a, b) => (/mp4/.test(b.type) - /mp4/.test(a.type)) || (parseInt(b.bitrate) - parseInt(a.bitrate)));
+  const url = list[0].url.startsWith('http') ? list[0].url : base + list[0].url;
+  return { url, mime: list[0].type.split(';')[0], duration: d.lengthSeconds || 0 };
+}
+
+async function resolveAudio(id) {
+  const tasks = [
+    ...PIPED.map((b) => fromPiped(b, id)),
+    ...INVIDIOUS.map((b) => fromInvidious(b, id))
+  ];
+  try {
+    return await Promise.any(tasks);
+  } catch (e) {
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,6 +71,17 @@ module.exports = async function handler(req, res) {
     }
 
     const { action, query } = body || {};
+    const q = req.query || {};
+
+    // Audio stream resolver: returns a playable audio URL for a YouTube video id
+    if (action === 'audio' || q.action === 'audio') {
+      const id = String((body && body.id) || q.id || '');
+      if (!/^[a-zA-Z0-9_-]{11}$/.test(id)) return res.status(400).json({ error: 'Invalid id' });
+      const result = await resolveAudio(id);
+      if (!result) return res.status(502).json({ error: 'No audio stream found' });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json(result);
+    }
 
     // Direct ping response
     if (action === 'stream') {
